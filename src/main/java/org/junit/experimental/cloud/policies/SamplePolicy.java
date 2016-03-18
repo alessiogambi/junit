@@ -80,13 +80,13 @@ public class SamplePolicy extends AbstractScalingPolicy {
     private boolean canDeployTest(ClientCloudObject test, IHostPool pool) {
 
         // This is to avoid that others can change pool in the meanwhile
-        System.out.println(
-                "SamplePolicy.canDeployTest() " + Thread.currentThread());
+        // System.out.println(
+        // "SamplePolicy.canDeployTest() " + Thread.currentThread());
 
         synchronized (hostsLock) {
 
-            System.out.println(
-                    "SamplePolicy.canDeployTest() 1 " + Thread.currentThread());
+            // System.out.println(
+            // "SamplePolicy.canDeployTest() 1 " + Thread.currentThread());
             /*
              * Synchronize actual to local data, basically remove objects that
              * are not there anymore. This basically repeats the same for all
@@ -98,8 +98,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 mapping.undeployTestsInsideHost(host, hostObjects);
             }
 
-            System.out.println(
-                    "SamplePolicy.canDeployTest() 2 " + Thread.currentThread());
+            // System.out.println(
+            // "SamplePolicy.canDeployTest() 2 " + Thread.currentThread());
 
             for (IHost host : pool.getHosts()) {
                 if ((mapping.countRunningTestsForHost(host)
@@ -115,8 +115,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 }
             }
 
-            System.out.println(
-                    "SamplePolicy.canDeployTest() 3 " + Thread.currentThread());
+            // System.out.println(
+            // "SamplePolicy.canDeployTest() 3 " + Thread.currentThread());
 
             // Here we need to start an host on our own and then return true for
             // this thread !
@@ -175,15 +175,13 @@ public class SamplePolicy extends AbstractScalingPolicy {
                         if ((mapping.countRunningTestsForHost(host) + mapping
                                 .countScheduledTestsForHost(host)) < LIMIT) {
 
-                            // Bookkeeping
-                            mapping.deployTestObjectToHost(host, cloudObject);
-
                             System.out.println("SamplePolicy.selectHost() "
                                     + Thread.currentThread().getName()
                                     + " deploy CO " + cloudObject + " of class "
                                     + cloudObject.getCloudObjectClass() + " on "
                                     + host.getIpAddress());
-
+                            // Bookkeeping
+                            mapping.deployTestObjectToHost(host, cloudObject);
                             TestToHostMapping.get().getTestsLock().notifyAll();
                             return host;
                         }

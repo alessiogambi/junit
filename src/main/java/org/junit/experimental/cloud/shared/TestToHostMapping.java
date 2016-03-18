@@ -17,6 +17,8 @@ import org.junit.runner.Description;
 // TODO Check thread safety !
 public class TestToHostMapping {
 
+    private static final String SCHEDULED = "SCHEDULED";
+
     private static final String STARTED = "STARTED";
 
     private static final String FINISHED = "FINISHED";
@@ -48,8 +50,8 @@ public class TestToHostMapping {
     }
 
     // FIXME UNSAFE !! NON-DEFENSIVE
-    private void updateTestObjectByDescription(Description description,
-            String status) {
+    private synchronized void updateTestObjectByDescription(
+            Description description, String status) {
 
         if (description.getStatement() instanceof InvokeMethod) {
             Object proxyObject = ((InvokeMethod) description.getStatement())
@@ -59,10 +61,27 @@ public class TestToHostMapping {
                     .getClientCloudObject(proxyObject);
 
             // Update the status - Note this
-            testObjectsToStatuMapping.put(cloudObject, status);
+            String previousState = testObjectsToStatuMapping.put(cloudObject,
+                    status);
+            System.out.println(
+                    "TestToHostMapping.updateTestObjectByDescription() previousState of "
+                            + cloudObject + " was " + previousState);
 
             // Update the count
             IHost host = testToHostMapping.get(cloudObject);
+
+            if (host == null) {
+                System.err.println(
+                        "\n------ \ntestToHostMapping full content for "
+                                + Thread.currentThread() + " \n "
+                                + testToHostMapping + "\n-------");
+
+                System.err.println(
+                        "\n------ \nhostToTestMapping full content for "
+                                + Thread.currentThread() + " \n "
+                                + hostToTestMapping + "\n-------");
+
+            }
 
             System.out.println(
                     "TestToHostMapping.updateTestObjectByDescription() HOST IS "
@@ -71,8 +90,12 @@ public class TestToHostMapping {
                             + " and proxy object " + proxyObject);
             AtomicInteger runningTest = null;
 
-            runningTest = runningTestOnHostMapping.containsKey(host)
-                    ? runningTestOnHostMapping.get(host) : null;
+            try {
+                runningTest = runningTestOnHostMapping.containsKey(host)
+                        ? runningTestOnHostMapping.get(host) : null;
+            } catch (NullPointerException npe) {
+                npe.printStackTrace();
+            }
 
             if (runningTest == null)
                 return;
@@ -144,9 +167,13 @@ public class TestToHostMapping {
      */
     public void deployTestObjectToHost(IHost selectedHost,
             ClientCloudObject cloudObject) {
+        System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
+                + Thread.currentThread() + " Register " + cloudObject + " to "
+                + selectedHost + " " + hostToTestMapping.get(selectedHost));
         hostToTestMapping.get(selectedHost).add(cloudObject);
         testToHostMapping.put(cloudObject, selectedHost);
-        // Increment counter
+        // Force the new state !
+        testObjectsToStatuMapping.put(cloudObject, SCHEDULED);
         scheduledTestOnHostMapping.get(selectedHost).incrementAndGet();
     }
 
