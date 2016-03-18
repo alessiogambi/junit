@@ -16,23 +16,25 @@ import org.junit.experimental.cloud.shared.TestToHostMapping;
 /**
  * Assure that a CO is always deployed in an empty cloud host.
  * 
- * Question is: when a CO is removed from a CH ?!
- * 
- * This blocks until a permit is available try { System.out.println(
- * "TestToHostMapping.testStarts() Acquire the lock on the host " + host + " " +
- * Thread.currentThread()); private Map<IHost, Semaphore> hostToSemaphoreMapping
- * = new ConcurrentHashMap<IHost, Semaphore>();
- * hostToSemaphoreMapping.get(host).acquire(); } catch (InterruptedException e)
- * { System.out.println("TestToHostMapping.testStarts() INTERRUPTED !"); throw
- * new JCloudScaleException(e); } hostToSemaphoreMapping.get(host).release();
+ * TODO Probably the Scheduler is the right place to put al this complex stuff,
+ * and a semaphor is the right concurrent data structure to use and probably the
+ * TestToHostMapping is the place to put all the crap
  * 
  * @author gambi
  *
  */
 public class SamplePolicy extends AbstractScalingPolicy {
 
-    // TODO Probably the Scheduler is the right place to put al this complex
-    // stuff.
+    private int maxHosts;
+
+    private int maxConcurrentTestsPerHost;
+
+    // -1 means infinity
+    public SamplePolicy(int maxHosts, int maxConcurrentTestsPerHost) {
+        super();
+        this.maxHosts = maxHosts;
+        this.maxConcurrentTestsPerHost = maxConcurrentTestsPerHost;
+    }
 
     // Map<IHost, Set<ClientCloudObject>> mapping = new HashMap<IHost,
     // Set<ClientCloudObject>>();
@@ -48,12 +50,6 @@ public class SamplePolicy extends AbstractScalingPolicy {
 
     // For hostPools
     private Object hostsLock = new Object();
-
-    // Allow 1 test per host
-    private int LIMIT = 1;
-
-    // Allow unlinmited hosts -1
-    private int CH_LIMIT = -1;
 
     private IHost pickRandomOrStart(IHostPool pool) {
         int hostsCount = pool.getHostsCount();
@@ -102,8 +98,11 @@ public class SamplePolicy extends AbstractScalingPolicy {
             // "SamplePolicy.canDeployTest() 2 " + Thread.currentThread());
 
             for (IHost host : pool.getHosts()) {
-                if ((mapping.countRunningTestsForHost(host)
-                        + mapping.countScheduledTestsForHost(host)) < LIMIT) {
+                int sum = mapping.countRunningTestsForHost(host)
+                        + mapping.countScheduledTestsForHost(host);
+                if (maxConcurrentTestsPerHost < 1
+                        || (maxConcurrentTestsPerHost >= 1
+                                && sum < maxConcurrentTestsPerHost)) {
 
                     System.out.println("SamplePolicy.canDeployTest() host free "
                             + host + " for " + Thread.currentThread());
@@ -121,8 +120,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
             // Here we need to start an host on our own and then return true for
             // this thread !
 
-            if (CH_LIMIT < 1
-                    || (CH_LIMIT >= 1 && pool.getHostsCount() < CH_LIMIT)) {
+            if (maxHosts < 1
+                    || (maxHosts >= 1 && pool.getHostsCount() < maxHosts)) {
                 IHost host = pool.startNewHost();
                 mapping.registerHost(host);
                 return true;
@@ -172,8 +171,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 // Note that the number of hosts might vary !!
                 synchronized (hostsLock) {
                     for (IHost host : pool.getHosts()) {
-                        if ((mapping.countRunningTestsForHost(host) + mapping
-                                .countScheduledTestsForHost(host)) < LIMIT) {
+                        if ((mapping.countRunningTestsForHost(host)
+                                + mapping.countScheduledTestsForHost(
+                                        host)) < maxConcurrentTestsPerHost) {
 
                             System.out.println("SamplePolicy.selectHost() "
                                     + Thread.currentThread().getName()

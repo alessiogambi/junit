@@ -32,7 +32,8 @@ public class JCSParallelRunner extends JCSRunner {
                 new DockerCloudPlatformConfiguration(
                         "http://192.168.56.101:2375", "",
                         "alessio/jcs:0.4.6-SNAPSHOT-SHADED", "", ""))
-                                .with(new SamplePolicy()) //
+                                .with(new SamplePolicy(10, 1)) // Max 4 hosts, 1
+                                                              // MIP for each
                                 .withCommunicationServerPublisher(false)
                                 .withMQServer("192.168.56.101", 61616)
                                 .withLoggingClient(Level.OFF)
