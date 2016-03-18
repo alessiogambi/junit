@@ -5,6 +5,7 @@ import org.junit.runners.model.Statement;
 
 public class InvokeMethod extends Statement {
     private final FrameworkMethod testMethod;
+
     private final Object target;
 
     public InvokeMethod(FrameworkMethod testMethod, Object target) {
@@ -15,5 +16,10 @@ public class InvokeMethod extends Statement {
     @Override
     public void evaluate() throws Throwable {
         testMethod.invokeExplosively(target);
+    }
+
+    // PATCH
+    public Object getTarget() {
+        return target;
     }
 }
