@@ -115,6 +115,9 @@ public class TestToHostMapping {
 
             case FINISHED:
                 runningTest.decrementAndGet();
+                // At this point we can also do the clean up at app level
+                testObjectsToStatuMapping.keySet().remove(cloudObject);
+                testToHostMapping.keySet().remove(cloudObject);
                 break;
             case FAILED:
                 runningTest.decrementAndGet();
@@ -171,7 +174,12 @@ public class TestToHostMapping {
                 + Thread.currentThread() + " Register " + cloudObject + " to "
                 + selectedHost + " " + hostToTestMapping.get(selectedHost));
         hostToTestMapping.get(selectedHost).add(cloudObject);
+        //
         testToHostMapping.put(cloudObject, selectedHost);
+
+        System.err.println("=======\n testToHostMapping full content \n"
+                + testToHostMapping + "\n =======");
+
         // Force the new state !
         testObjectsToStatuMapping.put(cloudObject, SCHEDULED);
         scheduledTestOnHostMapping.get(selectedHost).incrementAndGet();
@@ -196,6 +204,12 @@ public class TestToHostMapping {
                 ? scheduledTestOnHostMapping.get(host).get() : 0;
     }
 
+    /*
+     * THIS IS TRICKY. If we brutally remobe objects that are not live anymore
+     * we corrupt the status of tests because CO exited but notification of
+     * termination is still going on ! Here we need only to update the data that
+     * we use to make decisions !
+     */
     public void undeployTestsInsideHost(IHost host,
             Set<ClientCloudObject> cloudObjects) {
         // make the intersection. If a CO is not in the set, it means that it's
@@ -203,9 +217,6 @@ public class TestToHostMapping {
         if (hostToTestMapping.containsKey(host)) {
             hostToTestMapping.get(host).retainAll(cloudObjects);
         }
-        testObjectsToStatuMapping.keySet().retainAll(cloudObjects);
-        testToHostMapping.keySet().retainAll(cloudObjects);
-
     }
 
     public void registerTestClass(Class clazz) {
