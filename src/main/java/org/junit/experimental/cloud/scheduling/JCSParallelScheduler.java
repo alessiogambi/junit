@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,7 +16,9 @@ import org.junit.runners.model.RunnerScheduler;
 
 /**
  * The scheduler is not aware of any deployment logic or constraints. It simply
- * creates new threads.
+ * creates new threads and associates them to TestJobs (test jobs can be one or
+ * more test methods from the same test class depending on the Actual JUNIT
+ * runner.
  * 
  * @author gambi
  *
@@ -30,9 +33,30 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private Queue<Future<Void>> tasks;
 
-    public JCSParallelScheduler(Class<?> klass) {
-        this.executorService = Executors.newCachedThreadPool(
-                new NamedThreadFactory(klass.getSimpleName()));
+    private final Semaphore testsSemaphore;
+
+    /**
+     * Since threads limit here enforces test limit we can also use one
+     * parameter.
+     * 
+     * @param klass
+     * @param hardLimit
+     */
+    public JCSParallelScheduler(Class<?> klass, int hardLimit) {
+        this(klass, hardLimit, hardLimit);
+    }
+
+    public JCSParallelScheduler(Class<?> klass, int testLimit,
+            int threadLimit) {
+        // TODO Change this if you want to control the scheduling order, e.g.,
+        // with priority or stuff
+        if (threadLimit > 0) {
+            this.executorService = Executors.newFixedThreadPool(threadLimit,
+                    new NamedThreadFactory(klass.getSimpleName()));
+        } else {
+            this.executorService = Executors.newCachedThreadPool(
+                    new NamedThreadFactory(klass.getSimpleName()));
+        }
 
         /*
          * Completion Service follows a producer/consumer philosophy: as soon a
@@ -42,20 +66,64 @@ public class JCSParallelScheduler implements RunnerScheduler {
         completionService = new ExecutorCompletionService<Void>(
                 executorService);
 
-        // Ok, this is what we actually need
-        // Collect the results
+        /*
+         * This is what we actually need for later collect the results. Note
+         * that somewhere the time given by JUnit are not really accurate !
+         */
         tasks = new LinkedList<Future<Void>>();
+
+        // TODO - Limit the amount of tests concurrently "processed"
+        // to the framework. This can be used to enforce a GLOBAL parallelism
+        // level, not sure if needed really
+
+        // Note that threads are generated before and for all the tests
+        testsSemaphore = new Semaphore(testLimit);
 
     }
 
+    /**
+     * Blocking this will block the entire submission since schedule is invoked
+     * by Thread.main
+     * 
+     * @param childStatement
+     */
     @Override
     public void schedule(final Runnable childStatement) {
-        // This will eventually result in CO deployment
-        tasks.offer(completionService.submit(childStatement, null));
+
+        /*
+         * Wrap the original Runnable into a new one that use the semaphore for
+         * concurrency management. Here I guess is the place were to enforce any
+         * specific ordering (or reordering of elements)
+         */
+        tasks.offer(completionService.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    try {
+                        System.out.println(Thread.currentThread()
+                                + " acquiring permit from main semaphore");
+                        testsSemaphore.acquire();
+                        System.out.println(Thread.currentThread()
+                                + " starting test(s) execution ");
+                        childStatement.run();
+                    } catch (InterruptedException e) {
+                        System.err.println(
+                                Thread.currentThread() + " INTERRUPTED");
+                    }
+                } finally {
+                    testsSemaphore.release();
+                    System.out.println(Thread.currentThread()
+                            + " released permit from main semaphore");
+                }
+
+            }
+        }, null));
     }
 
     @Override
     public void finished() {
+        System.out.println(
+                "JCSParallelScheduler.finished() Finshed submission of all tests. Waiting for the results");
         try {
             while (!tasks.isEmpty()) {
                 Future<Void> finishedTask = completionService.take();
@@ -96,8 +164,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
         public Thread newThread(Runnable r) {
             Thread t = new Thread(group, r, group.getName() + "-thread-"
                     + threadNumber.getAndIncrement(), 0);
-            System.out.println(
-                    "JCSParallelRunner.NamedThreadFactory.newThread() " + t);
+            System.out
+                    .println("JCSParallelRunner.NamedThreadFactory.newThread() "
+                            + t + " for runnable " + r);
             return t;
         }
     }
