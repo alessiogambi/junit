@@ -1,6 +1,5 @@
 package org.junit.runners;
 
-import org.junit.experimental.cloud.JCSRunner;
 import org.junit.runners.model.InitializationError;
 
 /**
@@ -12,14 +11,18 @@ import org.junit.runners.model.InitializationError;
  * the only way this class should be used--any extension that depends on the
  * implementation details of this class is likely to break in future versions.
  *
+ *
+ * The default runner is JCSSuiteParallelRunner ?!
+ * 
  * @since 4.5
  */
-public final class JUnit4 extends JCSRunner { // BlockJUnit4ClassRunner {
+public final class JUnit4 extends BlockJUnit4ClassRunner {
+
     /**
-     * Constructs a new instance of the default runner
+     * Constructs a new instance of the default runner - > by default we shall
+     * use JCSParallelSuite or JCSParallelRunner ?
      */
     public JUnit4(Class<?> klass) throws InitializationError {
         super(klass);
-        System.out.println("JUnit4.JUnit4()");
     }
 }
