@@ -5,10 +5,7 @@ import java.lang.reflect.Constructor;
 
 import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
 import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
-import org.junit.experimental.cloud.listeners.JCSJunitExecutionListener;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
-import org.junit.runner.Description;
-import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
@@ -18,17 +15,17 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
         super(klass);
     }
 
-    @Override
-    public Description getDescription() {
-        return super.getDescription();
-    }
+    // @Override
+    // public Description getDescription() {
+    // return super.getDescription();
+    // }
 
-    @Override
-    public void run(RunNotifier notifier) {
-        notifier.addListener(new JCSJunitExecutionListener());
-        super.run(notifier);
-
-    }
+    // @Override
+    // public void run(RunNotifier notifier) {
+    // notifier.addListener(new JCSJunitExecutionListener());
+    // super.run(notifier);
+    //
+    // }
 
     /*
      * TODO Ideally here there should be a nice way to decide if a test

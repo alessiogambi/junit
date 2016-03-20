@@ -8,21 +8,11 @@ public class JCSJunitExecutionListener extends RunListener {
 
     private final TestToHostMapping mapping = TestToHostMapping.get();
 
-    // @Override
-    // public void testRunStarted(Description description) throws Exception {
-    // System.out.println(
-    // "Number of tests to execute: " + description.testCount());
-    // }
-    //
-    // @Override
-    // public void testRunFinished(Result result) throws Exception {
-    // System.out.println("Number of tests executed: " + result.getRunCount());
-    // }
-
     @Override
     public void testStarted(Description description) throws Exception {
-        System.out.println("JCSJunitExecutionListener.testStarted()"
-                + Thread.currentThread());
+        System.out.println("JCSJunitExecutionListener.testStarted() "
+                + Thread.currentThread() + " CHILDREN "
+                + description.getChildren().size());
         mapping.testStarts(description);
 
     }

@@ -35,6 +35,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private final Semaphore testsSemaphore;
 
+    private final Class klass;
+
     /**
      * Since threads limit here enforces test limit we can also use one
      * parameter.
@@ -48,6 +50,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     public JCSParallelScheduler(Class<?> klass, int testLimit,
             int threadLimit) {
+
+        this.klass = klass;
+
         // TODO Change this if you want to control the scheduling order, e.g.,
         // with priority or stuff
         if (threadLimit > 0) {
@@ -77,7 +82,12 @@ public class JCSParallelScheduler implements RunnerScheduler {
         // level, not sure if needed really
 
         // Note that threads are generated before and for all the tests
-        testsSemaphore = new Semaphore(testLimit);
+        testsSemaphore = new Semaphore(
+                testLimit > 0 ? testLimit : Integer.MAX_VALUE);
+
+        System.out.println("JCSParallelScheduler.JCSParallelScheduler()\n"
+                + "\tSUMMARY\n" + "\t\t " + testLimit + " using " + threadLimit
+                + " threads");
 
     }
 
@@ -100,11 +110,11 @@ public class JCSParallelScheduler implements RunnerScheduler {
             public void run() {
                 try {
                     try {
-                        System.out.println(Thread.currentThread()
-                                + " acquiring permit from main semaphore");
+                        // System.out.println(Thread.currentThread()
+                        // + " acquiring permit from main semaphore");
                         testsSemaphore.acquire();
-                        System.out.println(Thread.currentThread()
-                                + " starting test(s) execution ");
+                        // System.out.println(Thread.currentThread()
+                        // + " starting test(s) execution ");
                         childStatement.run();
                     } catch (InterruptedException e) {
                         System.err.println(
@@ -112,8 +122,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
                     }
                 } finally {
                     testsSemaphore.release();
-                    System.out.println(Thread.currentThread()
-                            + " released permit from main semaphore");
+                    // System.out.println(Thread.currentThread()
+                    // + " released permit from main semaphore");
                 }
 
             }
@@ -122,21 +132,21 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     @Override
     public void finished() {
-        System.out.println(
-                "JCSParallelScheduler.finished() Finshed submission of all tests. Waiting for the results");
+        // System.out.println("\n\t\t " + "JCSParallelScheduler.finished() "
+        // + "Finished submission of all tests for " + klass + "\n");
         try {
             while (!tasks.isEmpty()) {
                 Future<Void> finishedTask = completionService.take();
                 // Whenever something - i.e., test - finishes take will unlock
                 tasks.remove(finishedTask);
                 // Notify Everybody !
-                System.out.println(
-                        "JCSParallelScheduler.finished() " + finishedTask);
+                // System.out.println(
+                // "JCSParallelScheduler.finished() " + finishedTask);
                 synchronized (TestToHostMapping.get().getTestsLock()) {
                     TestToHostMapping.get().getTestsLock().notifyAll();
                 }
-                System.out.println("JCSParallelScheduler.finished() "
-                        + finishedTask + " Notify Done");
+                // System.out.println("JCSParallelScheduler.finished() "
+                // + finishedTask + " Notify Done");
 
             }
         } catch (InterruptedException e) {
@@ -148,6 +158,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
         }
     }
 
+    // Note this is shared among all the JCSParallelRunner instances
     static final class NamedThreadFactory implements ThreadFactory {
         static final AtomicInteger poolNumber = new AtomicInteger(1);
 

@@ -1,10 +1,6 @@
 package org.junit.experimental.cloud.policies;
 
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
-
-import com.google.common.collect.Iterables;
 
 import at.ac.tuwien.infosys.jcloudscale.exception.JCloudScaleException;
 import at.ac.tuwien.infosys.jcloudscale.policy.AbstractScalingPolicy;
@@ -25,8 +21,10 @@ import org.junit.experimental.cloud.shared.TestToHostMapping;
  */
 public class SamplePolicy extends AbstractScalingPolicy {
 
+    // Define the overall number of hosts
     private int maxHosts;
 
+    // Define the max concurrent tests from the same class on the same host !
     private int maxConcurrentTestsPerHost;
 
     // -1 means infinity
@@ -88,18 +86,26 @@ public class SamplePolicy extends AbstractScalingPolicy {
              * are not there anymore. This basically repeats the same for all
              * the waiting threads and should be optimized !
              */
-            for (IHost host : pool.getHosts()) {
-                Set<ClientCloudObject> hostObjects = new HashSet<ClientCloudObject>();
-                Iterables.addAll(hostObjects, host.getCloudObjects());
-                mapping.undeployTestsInsideHost(host, hostObjects);
-            }
+            // NOTE Assuming that we capture tests that fail/finish and only
+            // then remove from data structure this is ok.
+            // for (IHost host : pool.getHosts()) {
+            // Set<ClientCloudObject> hostObjects = new
+            // HashSet<ClientCloudObject>();
+            // Iterables.addAll(hostObjects, host.getCloudObjects());
+            // mapping.undeployTestsInsideHost(host, hostObjects);
+            // }
 
             // System.out.println(
             // "SamplePolicy.canDeployTest() 2 " + Thread.currentThread());
 
             for (IHost host : pool.getHosts()) {
-                int sum = mapping.countRunningTestsForHost(host)
-                        + mapping.countScheduledTestsForHost(host);
+                // int sum = mapping.countRunningTestsForHost(host)
+                // + mapping.countScheduledTestsForHost(host);
+                int sum = mapping.countRunningTestsOfTypeForHost(
+                        test.getCloudObjectClass(), host)
+                        + mapping.countScheduledTestsOfTypeForHost(
+                                test.getCloudObjectClass(), host);
+
                 if (maxConcurrentTestsPerHost < 1
                         || (maxConcurrentTestsPerHost >= 1
                                 && sum < maxConcurrentTestsPerHost)) {
@@ -171,9 +177,16 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 // Note that the number of hosts might vary !!
                 synchronized (hostsLock) {
                     for (IHost host : pool.getHosts()) {
-                        if ((mapping.countRunningTestsForHost(host)
-                                + mapping.countScheduledTestsForHost(
-                                        host)) < maxConcurrentTestsPerHost) {
+
+                        int sum = mapping.countRunningTestsOfTypeForHost(
+                                cloudObject.getCloudObjectClass(), host)
+                                + mapping.countScheduledTestsOfTypeForHost(
+                                        cloudObject.getCloudObjectClass(),
+                                        host);
+
+                        if (maxConcurrentTestsPerHost < 1
+                                || (maxConcurrentTestsPerHost >= 1
+                                        && sum < maxConcurrentTestsPerHost)) {
 
                             System.out.println("SamplePolicy.selectHost() "
                                     + Thread.currentThread().getName()
