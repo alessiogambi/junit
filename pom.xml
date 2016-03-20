@@ -57,6 +57,7 @@
 							<fail>true</fail>
 							<rules>
 								<requireMavenVersion>
+
 									<!-- Some plugin features require a recent Maven runtime to work 
 										properly -->
 									<message>Current version of Maven ${maven.version} required to
@@ -79,7 +80,13 @@
 									</message>
 								</requireNoRepositories>
 								<requireReleaseDeps>
+
 									<message>No Snapshots Dependencies Allowed!</message>
+
+									<!-- ===== Alessio Patch ===== -->
+									<excludes>
+										<exclude>jcloudscale:jcloudscale.core</exclude>
+									</excludes>
 								</requireReleaseDeps>
 							</rules>
 						</configuration>
