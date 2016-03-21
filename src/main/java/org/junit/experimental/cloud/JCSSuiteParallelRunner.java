@@ -21,7 +21,6 @@ import org.junit.runner.Runner;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
@@ -210,7 +209,7 @@ public class JCSSuiteParallelRunner extends Suite {
 
     public void configureJCloudScale() {
         SamplePolicy policy = new SamplePolicy(sizeLimit,
-                concurrentTestsPerHostLimit);
+                concurrentTestsPerHostLimit, -1);
 
         JCloudScaleConfiguration config = new JCloudScaleConfigurationBuilder(
                 new DockerCloudPlatformConfiguration(

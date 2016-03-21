@@ -71,6 +71,7 @@ public abstract class Request {
      */
     public static Request classes(Computer computer, Class<?>... classes) {
         try {
+            // TODO This builder is the one that define the Runner  
             AllDefaultPossibilitiesBuilder builder = new AllDefaultPossibilitiesBuilder(true);
             Runner suite = computer.getSuite(builder, classes);
             return runner(suite);

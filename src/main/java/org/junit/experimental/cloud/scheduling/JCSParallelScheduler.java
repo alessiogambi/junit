@@ -85,9 +85,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
         testsSemaphore = new Semaphore(
                 testLimit > 0 ? testLimit : Integer.MAX_VALUE);
 
-        System.out.println("JCSParallelScheduler.JCSParallelScheduler()\n"
-                + "\tSUMMARY\n" + "\t\t " + testLimit + " using " + threadLimit
-                + " threads");
+        // System.out.println("JCSParallelScheduler.JCSParallelScheduler()\n"
+        // + "\tSUMMARY\n" + "\t\t " + testLimit + " using " + threadLimit
+        // + " threads");
 
     }
 
@@ -175,9 +175,6 @@ public class JCSParallelScheduler implements RunnerScheduler {
         public Thread newThread(Runnable r) {
             Thread t = new Thread(group, r, group.getName() + "-thread-"
                     + threadNumber.getAndIncrement(), 0);
-            System.out
-                    .println("JCSParallelRunner.NamedThreadFactory.newThread() "
-                            + t + " for runnable " + r);
             return t;
         }
     }

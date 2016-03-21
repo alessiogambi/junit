@@ -10,16 +10,15 @@ public class AllDefaultPossibilitiesBuilder extends RunnerBuilder {
     private final boolean canUseSuiteMethod;
 
     public AllDefaultPossibilitiesBuilder(boolean canUseSuiteMethod) {
+        System.out.println(
+                "AllDefaultPossibilitiesBuilder.AllDefaultPossibilitiesBuilder()");
         this.canUseSuiteMethod = canUseSuiteMethod;
     }
 
     @Override
     public Runner runnerForClass(Class<?> testClass) throws Throwable {
-        List<RunnerBuilder> builders = Arrays.asList(
-                ignoredBuilder(),
-                annotatedBuilder(),
-                suiteMethodBuilder(),
-                junit3Builder(),
+        List<RunnerBuilder> builders = Arrays.asList(ignoredBuilder(),
+                annotatedBuilder(), suiteMethodBuilder(), junit3Builder(),
                 junit4Builder());
 
         for (RunnerBuilder each : builders) {

@@ -22,16 +22,22 @@ import org.junit.experimental.cloud.shared.TestToHostMapping;
 public class SamplePolicy extends AbstractScalingPolicy {
 
     // Define the overall number of hosts
-    private int maxHosts;
+    private int maxHosts = 1;
 
     // Define the max concurrent tests from the same class on the same host !
-    private int maxConcurrentTestsPerHost;
+    private int maxConcurrentTestsFromSameTestClassPerHost = -1;
+
+    // Define the max number of tests that can run in a host, but not limited to
+    // the same test case
+    private int maxConcurrentTestsPerHost = -1;
 
     // -1 means infinity
-    public SamplePolicy(int maxHosts, int maxConcurrentTestsPerHost) {
+    public SamplePolicy(int maxHosts, int maxConcurrentTestsPerHost,
+            int maxConcurrentTestMethodsPerHost) {
         super();
         this.maxHosts = maxHosts;
         this.maxConcurrentTestsPerHost = maxConcurrentTestsPerHost;
+        this.maxConcurrentTestsFromSameTestClassPerHost = maxConcurrentTestMethodsPerHost;
     }
 
     // Map<IHost, Set<ClientCloudObject>> mapping = new HashMap<IHost,
@@ -58,8 +64,6 @@ public class SamplePolicy extends AbstractScalingPolicy {
             // Starting a new host. This shall be synchronized anyway
             // right ,if before was synch the start for the moment we
             // keep the same semantic
-            System.out.println(
-                    "SamplePolicy.selectHost() Starting new for for NON-Test CO");
             return pool.startNewHost();
         }
     }
@@ -79,45 +83,35 @@ public class SamplePolicy extends AbstractScalingPolicy {
 
         synchronized (hostsLock) {
 
-            // System.out.println(
-            // "SamplePolicy.canDeployTest() 1 " + Thread.currentThread());
-            /*
-             * Synchronize actual to local data, basically remove objects that
-             * are not there anymore. This basically repeats the same for all
-             * the waiting threads and should be optimized !
-             */
-            // NOTE Assuming that we capture tests that fail/finish and only
-            // then remove from data structure this is ok.
-            // for (IHost host : pool.getHosts()) {
-            // Set<ClientCloudObject> hostObjects = new
-            // HashSet<ClientCloudObject>();
-            // Iterables.addAll(hostObjects, host.getCloudObjects());
-            // mapping.undeployTestsInsideHost(host, hostObjects);
-            // }
-
-            // System.out.println(
-            // "SamplePolicy.canDeployTest() 2 " + Thread.currentThread());
-
             for (IHost host : pool.getHosts()) {
-                // int sum = mapping.countRunningTestsForHost(host)
-                // + mapping.countScheduledTestsForHost(host);
+                // Count how many test methods from the same class are running
+                // or scheduled (just to about to start)
                 int sum = mapping.countRunningTestsOfTypeForHost(
                         test.getCloudObjectClass(), host)
                         + mapping.countScheduledTestsOfTypeForHost(
                                 test.getCloudObjectClass(), host);
 
-                if (maxConcurrentTestsPerHost < 1
-                        || (maxConcurrentTestsPerHost >= 1
-                                && sum < maxConcurrentTestsPerHost)) {
+                boolean maxConcurrentTestMethodsPerHostOk = maxConcurrentTestsFromSameTestClassPerHost < 1
+                        || (maxConcurrentTestsFromSameTestClassPerHost >= 1
+                                && sum < maxConcurrentTestsFromSameTestClassPerHost);
 
-                    System.out.println("SamplePolicy.canDeployTest() host free "
-                            + host + " for " + Thread.currentThread());
-                    /*
-                     * Has free space the host. Note that it might happen that
-                     * the test will be not scheduled on that particular host!
-                     */
-                    return true;
+                if (!maxConcurrentTestMethodsPerHostOk)
+                    continue;
+
+                // Count how many test methods are running or scheduled (just to
+                // about to start)
+                int totalSum = mapping.countRunningTestsForHost(host)
+                        + mapping.countScheduledTestsForHost(host);
+
+                boolean maxConcurrentTestsPerHostOk = maxConcurrentTestsPerHost < 1
+                        || (maxConcurrentTestsPerHost >= 1
+                                && totalSum < maxConcurrentTestsPerHost);
+
+                if (!maxConcurrentTestsPerHostOk) {
+                    continue;
                 }
+                // here both are true
+                return true;
             }
 
             // System.out.println(
@@ -138,39 +132,31 @@ public class SamplePolicy extends AbstractScalingPolicy {
     }
 
     @Override
-    public /* synchronized */IHost selectHost(ClientCloudObject cloudObject,
+    public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-        // Block the thread until the condition is satisfied but only if it
-        // carries a Test
+        /*
+         * Block the thread until the conditions for its execution are
+         * satisfied, but only if it carries a Test
+         */
         if (mapping.isTestClass(cloudObject.getCloudObjectClass())) {
-            // TODO Make this parametric on the host and introduce start host
-            // here ? This should be implemented via TestMapping class !
             synchronized (TestToHostMapping.get().getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
-                        System.out.println("SamplePolicy.selectHost() "
-                                + Thread.currentThread() + " WAITING !");
-
                         TestToHostMapping.get().getTestsLock().wait();
-
-                        System.out.println("SamplePolicy.selectHost() "
-                                + Thread.currentThread() + " UNLOCKED !");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         throw new JCloudScaleException(e);
                     }
                 }
 
-                System.out.println("SamplePolicy.selectHost() "
-                        + Thread.currentThread() + " DEPLOYING TEST !");
-
                 /*
                  * If a thread arrives here then it is safe to assume that there
-                 * is and actual place for the test and for every thread, or we
-                 * can start new machines. we still need to synch on this
-                 * because other threads not related to testing classes might be
-                 * active
+                 * is and actual place for it. This is true for every thread
+                 * that arrive here and might include the possibility to we can
+                 * start new machines. We still need to synch because other
+                 * threads not related to testing classes might be active and
+                 * cause host changes
                  */
 
                 // Try to find an available host that can host this test
@@ -183,17 +169,20 @@ public class SamplePolicy extends AbstractScalingPolicy {
                                 + mapping.countScheduledTestsOfTypeForHost(
                                         cloudObject.getCloudObjectClass(),
                                         host);
+                        int totalSum = mapping.countRunningTestsForHost(host)
+                                + mapping.countScheduledTestsForHost(host);
 
-                        if (maxConcurrentTestsPerHost < 1
+                        boolean maxConcurrentTestMethodsPerHostOk = maxConcurrentTestsFromSameTestClassPerHost < 1
+                                || (maxConcurrentTestsFromSameTestClassPerHost >= 1
+                                        && sum < maxConcurrentTestsFromSameTestClassPerHost);
+
+                        boolean maxConcurrentTestsPerHostOk = maxConcurrentTestsPerHost < 1
                                 || (maxConcurrentTestsPerHost >= 1
-                                        && sum < maxConcurrentTestsPerHost)) {
+                                        && totalSum < maxConcurrentTestsPerHost);
 
-                            System.out.println("SamplePolicy.selectHost() "
-                                    + Thread.currentThread().getName()
-                                    + " deploy CO " + cloudObject + " of class "
-                                    + cloudObject.getCloudObjectClass() + " on "
-                                    + host.getIpAddress());
-                            // Bookkeeping
+                        if (maxConcurrentTestMethodsPerHostOk
+                                && maxConcurrentTestsPerHostOk) {
+
                             mapping.deployTestObjectToHost(host, cloudObject);
                             TestToHostMapping.get().getTestsLock().notifyAll();
                             return host;
@@ -202,19 +191,20 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 }
 
                 // Not sure if here we shall be do this or not
-                System.out.println(
-                        "SamplePolicy.selectHost() STARTING A NEW HOST");
+                // System.out.println(
+                // "SamplePolicy.selectHost() STARTING A NEW HOST");
                 // No hosts cannot be found, we should be able to start a
                 // new one.
                 // TODO Will this be ok ?! I am not sure !
                 synchronized (hostsLock) {
                     IHost selectedHost = pool.startNewHost();
                     mapping.registerHost(selectedHost);
-                    System.out.println("SamplePolicy.selectHost() "
-                            + Thread.currentThread().getName() + " deploy CO "
-                            + cloudObject + " of class "
-                            + cloudObject.getCloudObjectClass() + " on "
-                            + selectedHost.getIpAddress());
+
+                    // System.out.println("SamplePolicy.selectHost() "
+                    // + Thread.currentThread().getName() + " deploy CO "
+                    // + cloudObject + " of class "
+                    // + cloudObject.getCloudObjectClass() + " on "
+                    // + selectedHost.getIpAddress());
 
                     // Bookkeeping
                     mapping.deployTestObjectToHost(selectedHost, cloudObject);
@@ -223,8 +213,6 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 }
             }
         } else {
-            System.out.println(
-                    "SamplePolicy.selectHost() Not a test, just go on");
             synchronized (hostsLock) {
                 return pickRandomOrStart(pool);
             }

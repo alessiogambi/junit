@@ -65,10 +65,10 @@ public class TestToHostMapping {
             String previousState = testObjectsToStatuMapping.put(cloudObject,
                     status);
 
-            System.out.println("\t\t\t" + description.getClassName() + " "
-                    + description.getDisplayName() + " "
-                    + description.getMethodName() + " Test: " + cloudObject
-                    + " " + previousState + " --> " + status);
+            // System.out.println("\t\t\t" + description.getClassName() + " "
+            // + description.getDisplayName() + " "
+            // + description.getMethodName() + " Test: " + cloudObject
+            // + " " + previousState + " --> " + status);
 
             // Update the count
             IHost host = testToHostMapping.get(cloudObject);
@@ -79,13 +79,12 @@ public class TestToHostMapping {
                 runningTest = runningTestOnHostMapping.containsKey(host)
                         ? runningTestOnHostMapping.get(host) : null;
             } catch (NullPointerException npe) {
-                // npe.printStackTrace();
-
+                npe.printStackTrace();
                 System.out.println(
-                        "TestToHostMapping.updateTestObjectByDescription() HOST IS "
-                                + host + " For " + description.getMethodName()
-                                + " Cloud Object " + cloudObject
-                                + " and proxy object " + proxyObject);
+                        "TestToHostMapping.updateTestObjectByDescription() DUMP:");
+                System.out.println("HOST IS " + host + " For "
+                        + description.getMethodName() + " Cloud Object "
+                        + cloudObject + " and proxy object " + proxyObject);
                 System.err.println(
                         "\n------ \ntestToHostMapping full content for "
                                 + Thread.currentThread() + " \n "
@@ -118,18 +117,11 @@ public class TestToHostMapping {
                 runningTest.decrementAndGet();
                 // At this point we can also do the clean up at app level
                 testObjectsToStatuMapping.keySet().remove(cloudObject);
-                System.out.println("Remove " + cloudObject);
                 testToHostMapping.keySet().remove(cloudObject);
                 hostToTestMapping.get(host).remove(cloudObject);
+
                 break;
-            // case FAILED: // This will result from FINISHED
-            // runningTest.decrementAndGet();
-            // break;
             }
-            // System.out.println(
-            // "TestToHostMapping.updateTestObjectByDescription() Updating "
-            // + cloudObject + " --> " + status + " running tests "
-            // + runningTest);
         }
 
     }
@@ -160,7 +152,6 @@ public class TestToHostMapping {
 
     public void deregisterHost(IHost host) {
         hostToTestMapping.remove(host);
-        // testToHostMapping // TODO Implement this !
         runningTestOnHostMapping.remove(host);
         scheduledTestOnHostMapping.remove(host);
     }
@@ -174,17 +165,12 @@ public class TestToHostMapping {
      */
     public void deployTestObjectToHost(IHost selectedHost,
             ClientCloudObject cloudObject) {
-        System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
-                + Thread.currentThread() + " Register " + cloudObject + " to "
-                + selectedHost + " " + hostToTestMapping.get(selectedHost));
+
+        // System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
+        // + Thread.currentThread() + " Register " + cloudObject + " to "
+        // + selectedHost + " " + hostToTestMapping.get(selectedHost));
         hostToTestMapping.get(selectedHost).add(cloudObject);
-        //
         testToHostMapping.put(cloudObject, selectedHost);
-
-        System.err.println("=======\n testToHostMapping full content \n"
-                + testToHostMapping + "\n =======");
-
-        // Force the new state !
         testObjectsToStatuMapping.put(cloudObject, SCHEDULED);
         scheduledTestOnHostMapping.get(selectedHost).incrementAndGet();
     }
@@ -208,25 +194,10 @@ public class TestToHostMapping {
                 ? scheduledTestOnHostMapping.get(host).get() : 0;
     }
 
-    /*
-     * THIS IS TRICKY. If we brutally remove objects that are not live anymore
-     * we corrupt the status of tests because CO exited but notification of
-     * termination is still going on ! Here we need only to update the data that
-     * we use to make decisions !
-     */
-    // public void undeployTestsInsideHost(IHost host,
-    // Set<ClientCloudObject> cloudObjects) {
-    // make the intersection. If a CO is not in the set, it means that it's
-    // gone for good
-    // if (hostToTestMapping.containsKey(host)) {
-    // hostToTestMapping.get(host).retainAll(cloudObjects);
-    // }
-    // }
-
     public void registerTestClass(Class clazz) {
         synchronized (testClasses) {
-            System.out
-                    .println("TestToHostMapping.registerTestClass() " + clazz);
+            // System.out
+            // .println("TestToHostMapping.registerTestClass() " + clazz);
             testClasses.add(clazz);
         }
 
@@ -270,4 +241,23 @@ public class TestToHostMapping {
         return count;
     }
 
+    private int concurrentTestsLimit = -1;
+
+    public void setConcurrentTestsLimit(int concurrentTestsLimit) {
+        this.concurrentTestsLimit = concurrentTestsLimit;
+    }
+
+    public int getConcurrentTestsLimit() {
+        return concurrentTestsLimit;
+    }
+
+    private int threadLimit = -1;
+
+    public int getThreadLimit() {
+        return threadLimit;
+    }
+
+    public void setThreadLimit(int threadLimit) {
+        this.threadLimit = threadLimit;
+    }
 }
