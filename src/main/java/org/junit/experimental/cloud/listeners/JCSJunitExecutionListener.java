@@ -10,12 +10,16 @@ public class JCSJunitExecutionListener extends RunListener {
 
     @Override
     public void testStarted(Description description) throws Exception {
+        System.out.println(Thread.currentThread()
+                + " JCSJunitExecutionListener.testStarted()");
         mapping.testStarts(description);
 
     }
 
     @Override
     public void testFinished(Description description) throws Exception {
+        System.out.println(Thread.currentThread()
+                + " JCSJunitExecutionListener.testFinished()");
         mapping.testFinishes(description);
     }
 }

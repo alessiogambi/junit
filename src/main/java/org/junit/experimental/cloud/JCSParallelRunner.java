@@ -12,19 +12,27 @@ import org.junit.runners.model.InitializationError;
  */
 public class JCSParallelRunner extends JCSRunner {
 
+    private final int threadsLimit;
+
+    private final int concurrentTestsLimit;
+
     public JCSParallelRunner(final Class<?> klass) throws InitializationError {
-        super(klass);
-        // Use Default values 1, -1
-        setScheduler(new JCSParallelScheduler(klass, 1, -1));
+        this(klass, -1, -1);
     }
 
     public JCSParallelRunner(final Class<?> klass, //
             int concurrentTestsLimit, int threadsLimit)
             throws InitializationError {
         super(klass);
-
+        this.concurrentTestsLimit = concurrentTestsLimit;
+        this.threadsLimit = threadsLimit;
         setScheduler(new JCSParallelScheduler(klass, concurrentTestsLimit,
                 threadsLimit));
     }
 
+    @Override
+    public String toString() {
+        return super.toString() + "{concurrentTestsLimit="
+                + concurrentTestsLimit + ",threadsLimit=" + threadsLimit + "}";
+    }
 }

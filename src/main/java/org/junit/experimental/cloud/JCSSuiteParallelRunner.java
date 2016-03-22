@@ -48,25 +48,33 @@ public class JCSSuiteParallelRunner extends Suite {
          * @return How many test cases from the suite to run in parallel.
          *         Default -1 : unlimited
          */
-        int concurrentTestCases() default -1;
+        int concurrentTestCases()
+
+        default -1;
 
         /**
          * 
          * @return How many test methods or simply tests are active in the same
          *         test class. Default -1 : unlimited
          */
-        int concurrentTestMethods() default -1;
+        int concurrentTestMethods()
+
+        default -1;
 
         /**
          * @return How many concurrent tests in the same test case to run on the
          *         same host. Default -1 : unlimited
          */
-        int concurrentTestMethodsPerHost() default -1;
+        int concurrentTestMethodsPerHost()
+
+        default -1;
 
         /**
          * @return How many threads to use. Default -1 : unlimited
          */
-        int threadLimit() default -1;
+        int threadLimit()
+
+        default -1;
 
         /**
          * @return How many cloud nodes to use. Default 1
@@ -123,6 +131,16 @@ public class JCSSuiteParallelRunner extends Suite {
         this(null, builder.runners(null, classes));
         System.out.println(
                 "JCSSuiteParallelRunner (RunnerBuilder builder, Class<?>[] classes)");
+    }
+
+    public JCSSuiteParallelRunner(RunnerBuilder builder, Class<?>[] classes,
+            int concurrentTestCasesLimit, int threadLimit)
+            throws InitializationError {
+        // TODO This might be a critical point to address for the
+        // synchronization
+        // issues and the parenting of runners
+        this(null, builder.runners(null, classes), concurrentTestCasesLimit,
+                threadLimit);
     }
 
     /**
@@ -195,6 +213,17 @@ public class JCSSuiteParallelRunner extends Suite {
                 threadLimit));
     }
 
+    // This one shall be changed !
+    protected JCSSuiteParallelRunner(Class<?> klass, List<Runner> runners,
+            int concurrentTestCasesLimit, int threadLimit)
+            throws InitializationError {
+        super(klass, runners);
+        System.out.println(
+                "JCSSuiteParallelRunner.JCSSuiteParallelRunner() CREATING THE WRAPPING SUITE!");
+        setScheduler(new JCSParallelScheduler(klass, concurrentTestCasesLimit,
+                threadLimit));
+    }
+
     private static int[] valuesFromAnnotation(Class<?> klass) {
 
         ScheduleConfiguration annotation = klass
@@ -218,8 +247,8 @@ public class JCSSuiteParallelRunner extends Suite {
                                 .with(policy)
                                 .withCommunicationServerPublisher(false)
                                 .withMQServer("192.168.56.101", 61616)
-                                .withLoggingClient(Level.OFF)
-                                .withLoggingServer(Level.OFF).build();
+                                .withLoggingClient(Level.WARNING)
+                                .withLoggingServer(Level.SEVERE).build();
 
         JCloudScaleClient.setConfiguration(config);
 
@@ -228,12 +257,12 @@ public class JCSSuiteParallelRunner extends Suite {
         // + "==== ==== ==== ==== ==== ==== ");
     }
 
-    @Override
-    public void run(RunNotifier notifier) {
-        // XXX This is required to maintain the status of tests coherent
-        notifier.addListener(new JCSJunitExecutionListener());
-        super.run(notifier);
-    }
+    // @Override
+    // public void run(RunNotifier notifier) {
+    // XXX This is required to maintain the status of tests coherent
+    // notifier.addListener(new JCSJunitExecutionListener());
+    // super.run(notifier);
+    // }
 
     private static List<Runner> overrideRunners(List<Runner> runners,
             int[] valuesFromAnnotation) {
@@ -253,9 +282,9 @@ public class JCSSuiteParallelRunner extends Suite {
                                     .getJavaClass(),
                             concurrentTestsLimit, threadsLimit);
 
-                    // System.out.println(
-                    // ">>>>>> JCSSuiteParallelRunner.overrideRunners() Runner "
-                    // + runner + " with " + newRunner);
+                    System.out.println(
+                            ">>>>>> JCSSuiteParallelRunner.overrideRunners() Runner "
+                                    + runner + " with " + newRunner);
                     result.add(newRunner);
 
                 } catch (InitializationError e) {

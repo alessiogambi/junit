@@ -143,6 +143,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
             synchronized (TestToHostMapping.get().getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
+                        // System.out.println("SamplePolicy.selectHost()"
+                        // + Thread.currentThread()
+                        // + " Waiting for lock.");
                         TestToHostMapping.get().getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -176,10 +179,18 @@ public class SamplePolicy extends AbstractScalingPolicy {
                                 || (maxConcurrentTestsFromSameTestClassPerHost >= 1
                                         && sum < maxConcurrentTestsFromSameTestClassPerHost);
 
+                        // if (!maxConcurrentTestMethodsPerHostOk)
+                        // System.out.println("SamplePolicy.selectHost()"
+                        // + Thread.currentThread()
+                        // + " too many tests on the host ");
                         boolean maxConcurrentTestsPerHostOk = maxConcurrentTestsPerHost < 1
                                 || (maxConcurrentTestsPerHost >= 1
                                         && totalSum < maxConcurrentTestsPerHost);
-
+                        // if (!maxConcurrentTestsPerHostOk)
+                        // System.out.println("SamplePolicy.selectHost()"
+                        // + Thread.currentThread()
+                        // + " too many tests methods for the same test on the
+                        // host ");
                         if (maxConcurrentTestMethodsPerHostOk
                                 && maxConcurrentTestsPerHostOk) {
 

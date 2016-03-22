@@ -65,10 +65,10 @@ public class TestToHostMapping {
             String previousState = testObjectsToStatuMapping.put(cloudObject,
                     status);
 
-            // System.out.println("\t\t\t" + description.getClassName() + " "
-            // + description.getDisplayName() + " "
-            // + description.getMethodName() + " Test: " + cloudObject
-            // + " " + previousState + " --> " + status);
+            System.out.println("\t\t\t" + description.getClassName() + " "
+                    + description.getDisplayName() + " "
+                    + description.getMethodName() + " Test: " + cloudObject
+                    + " " + previousState + " --> " + status);
 
             // Update the count
             IHost host = testToHostMapping.get(cloudObject);
@@ -166,9 +166,9 @@ public class TestToHostMapping {
     public void deployTestObjectToHost(IHost selectedHost,
             ClientCloudObject cloudObject) {
 
-        // System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
-        // + Thread.currentThread() + " Register " + cloudObject + " to "
-        // + selectedHost + " " + hostToTestMapping.get(selectedHost));
+        System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
+                + Thread.currentThread() + " Register " + cloudObject + " to "
+                + selectedHost + " " + hostToTestMapping.get(selectedHost));
         hostToTestMapping.get(selectedHost).add(cloudObject);
         testToHostMapping.put(cloudObject, selectedHost);
         testObjectsToStatuMapping.put(cloudObject, SCHEDULED);

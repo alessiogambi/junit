@@ -20,6 +20,13 @@ import org.junit.runners.model.RunnerScheduler;
  * more test methods from the same test class depending on the Actual JUNIT
  * runner.
  * 
+ * 
+ * TODO We can do also use scheduler with plain JCSRunner I guess. Check if
+ * JCSParallel runner has only the scheduler more than plain JCSRunner.
+ * 
+ * TODO With the JCSJunitCoreWrapper we can also inject the VERY same scheduler
+ * if need across the various test classes
+ * 
  * @author gambi
  *
  */
@@ -35,7 +42,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private final Semaphore testsSemaphore;
 
-    private final Class klass;
+    private final String factoryName;
 
     /**
      * Since threads limit here enforces test limit we can also use one
@@ -51,16 +58,16 @@ public class JCSParallelScheduler implements RunnerScheduler {
     public JCSParallelScheduler(Class<?> klass, int testLimit,
             int threadLimit) {
 
-        this.klass = klass;
+        factoryName = klass != null ? klass.getSimpleName() : "Wrapping SUITE";
 
         // TODO Change this if you want to control the scheduling order, e.g.,
         // with priority or stuff
         if (threadLimit > 0) {
             this.executorService = Executors.newFixedThreadPool(threadLimit,
-                    new NamedThreadFactory(klass.getSimpleName()));
+                    new NamedThreadFactory(factoryName));
         } else {
-            this.executorService = Executors.newCachedThreadPool(
-                    new NamedThreadFactory(klass.getSimpleName()));
+            this.executorService = Executors
+                    .newCachedThreadPool(new NamedThreadFactory(factoryName));
         }
 
         /*
@@ -132,8 +139,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     @Override
     public void finished() {
-        // System.out.println("\n\t\t " + "JCSParallelScheduler.finished() "
-        // + "Finished submission of all tests for " + klass + "\n");
+        System.out.println("==========================\n"
+                + "Finished submission of all tests for " + factoryName + "\n"
+                + "Wait for tests to end\n" + "==========================\n");
         try {
             while (!tasks.isEmpty()) {
                 Future<Void> finishedTask = completionService.take();
@@ -145,9 +153,6 @@ public class JCSParallelScheduler implements RunnerScheduler {
                 synchronized (TestToHostMapping.get().getTestsLock()) {
                     TestToHostMapping.get().getTestsLock().notifyAll();
                 }
-                // System.out.println("JCSParallelScheduler.finished() "
-                // + finishedTask + " Notify Done");
-
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -156,6 +161,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
                 tasks.poll().cancel(true);
             executorService.shutdownNow();
         }
+        System.out.println(
+                "==========================\n" + "Finished all tests for "
+                        + factoryName + "\n" + "==========================\n");
     }
 
     // Note this is shared among all the JCSParallelRunner instances
