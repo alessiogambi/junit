@@ -18,7 +18,8 @@ public class EachTestNotifier {
 
     public void addFailure(Throwable targetException) {
         if (targetException instanceof MultipleFailureException) {
-            addMultipleFailureException((MultipleFailureException) targetException);
+            addMultipleFailureException(
+                    (MultipleFailureException) targetException);
         } else {
             notifier.fireTestFailure(new Failure(description, targetException));
         }
@@ -35,10 +36,14 @@ public class EachTestNotifier {
     }
 
     public void fireTestFinished() {
+        // System.out
+        // .println("EachTestNotifier.fireTestFinished() " + description);
         notifier.fireTestFinished(description);
     }
 
     public void fireTestStarted() {
+        // System.out.println("EachTestNotifier.fireTestStarted() " +
+        // description);
         notifier.fireTestStarted(description);
     }
 

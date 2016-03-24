@@ -7,7 +7,7 @@ import java.io.PrintStream;
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.textui.ResultPrinter;
 import junit.textui.TestRunner;
 
@@ -40,14 +40,14 @@ public class TextFeedbackTest extends TestCase {
 
     public void testEmptySuite() {
         String expected = expected(new String[]{"", "Time: 0", "", "OK (0 tests)", ""});
-        runner.doRun(new TestSuite());
+        runner.doRun(new JCSTestSuite());
         assertEquals(expected, output.toString());
     }
 
 
     public void testOneTest() {
         String expected = expected(new String[]{".", "Time: 0", "", "OK (1 test)", ""});
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(new TestCase() {
             @Override
             public void runTest() {
@@ -59,7 +59,7 @@ public class TextFeedbackTest extends TestCase {
 
     public void testTwoTests() {
         String expected = expected(new String[]{"..", "Time: 0", "", "OK (2 tests)", ""});
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(new TestCase() {
             @Override
             public void runTest() {
@@ -83,7 +83,7 @@ public class TextFeedbackTest extends TestCase {
             }
         };
         runner.setPrinter(printer);
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(new TestCase() {
             @Override
             public void runTest() {
@@ -103,7 +103,7 @@ public class TextFeedbackTest extends TestCase {
             }
         };
         runner.setPrinter(printer);
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(new TestCase() {
             @Override
             public void runTest() throws Exception {

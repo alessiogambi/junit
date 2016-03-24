@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import org.junit.internal.requests.SortingRequest;
 import org.junit.internal.runners.ErrorReportingRunner;
 import org.junit.internal.runners.JUnit38ClassRunner;
@@ -129,7 +129,7 @@ public class MaxCore {
             // to get the warning for this method, but we can't do better,
             // because JUnit 3.8's
             // thrown away which method the warning is for.
-            return new JUnit38ClassRunner(new TestSuite(getMalformedTestClass(each)));
+            return new JUnit38ClassRunner(new JCSTestSuite(getMalformedTestClass(each)));
         }
         Class<?> type = each.getTestClass();
         if (type == null) {

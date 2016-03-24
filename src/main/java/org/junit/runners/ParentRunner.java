@@ -18,6 +18,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
+import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.internal.AssumptionViolatedException;
 import org.junit.internal.runners.model.EachTestNotifier;
 import org.junit.internal.runners.statements.RunAfters;
@@ -69,11 +70,15 @@ public abstract class ParentRunner<T> extends Runner
 
     private volatile RunnerScheduler scheduler = new RunnerScheduler() {
         public void schedule(Runnable childStatement) {
+            // System.out.println(
+            // "ParentRunner.scheduler.new RunnerScheduler() {...}.schedule()");
             childStatement.run();
         }
 
         public void finished() {
             // do nothing
+            // System.out.println(
+            // "ParentRunner.scheduler.new RunnerScheduler() {...}.finished()");
         }
     };
 
@@ -293,16 +298,67 @@ public abstract class ParentRunner<T> extends Runner
         final RunnerScheduler currentScheduler = scheduler;
         try {
             for (final T each : getFilteredChildren()) {
+
+                // System.out.println(Thread.currentThread() + " Scheduled run
+                // of "
+                // + each + " with " + scheduler);
+
                 currentScheduler.schedule(new Runnable() {
+                    @Override
                     public void run() {
+                        // System.out.println(Thread.currentThread() + " Run "
+                        // + each + " by " + scheduler);
+
+                        // This will create the MethodBlock that will create the
+                        // CO
                         ParentRunner.this.runChild(each, notifier);
+
+                        // System.out.println(Thread.currentThread() + " Finish
+                        // "
+                        // + each + " by " + scheduler);
                     }
                 });
+
+                // currentScheduler.schedule(new DescriptiveRunnable(
+                // ParentRunner.this, each, notifier));
             }
         } finally {
+            // System.out.println(Thread.currentThread()
+            // + " ParentRunner.runChildren() currentScheduler.finished() "
+            // + scheduler);
             currentScheduler.finished();
         }
     }
+
+    // public static class DescriptiveRunnable implements Runnable {
+    //
+    // private Description description;
+    //
+    // private ParentRunner parent;
+    //
+    // private Object each;
+    //
+    // private RunNotifier notifier;
+    //
+    // public DescriptiveRunnable(ParentRunner parent, Object each,
+    // RunNotifier notifier) {
+    // this.parent = parent;
+    // this.each = each;
+    // this.notifier = notifier;
+    // //
+    // this.description = parent.describeChild(each);
+    // }
+    //
+    // public Description getDescription() {
+    // return description;
+    // }
+    //
+    // @Override
+    // public void run() {
+    // parent.runChild(each, notifier);
+    // }
+    //
+    // }
 
     /**
      * Returns a name used to describe this Runner
@@ -332,14 +388,29 @@ public abstract class ParentRunner<T> extends Runner
         //
         EachTestNotifier eachNotifier = new EachTestNotifier(notifier,
                 description);
-        eachNotifier.fireTestStarted();
+
         try {
-            statement.evaluate();
+            // At this point the CO SHould be already there
+            System.out.println("ParentRunner.runLeaf() start " + description);
+//            TestToHostMapping.get().testStarts(description);
+            //
+            eachNotifier.fireTestStarted();
+            // This remains blocked inside ParallelComputer right after ending
+            // the execution
+            statement.evaluate(); // inside the statement we need to fire start/end
+
+            System.out.println("ParentRunner.runLeaf() done " + description);
         } catch (AssumptionViolatedException e) {
+            e.printStackTrace();
             eachNotifier.addFailedAssumption(e);
         } catch (Throwable e) {
+            e.printStackTrace();
             eachNotifier.addFailure(e);
         } finally {
+            // Here is already too late !
+            // System.out.println("ParentRunner.runLeaf() finish " +
+            // description);
+            // TestToHostMapping.get().testFinishes(description);
             eachNotifier.fireTestFinished();
         }
     }

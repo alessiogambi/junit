@@ -3,7 +3,7 @@ package junit.extensions;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * A TestSuite for active Tests. It runs each
@@ -11,7 +11,7 @@ import junit.framework.TestSuite;
  * threads have terminated.
  * -- Aarhus Radisson Scandinavian Center 11th floor
  */
-public class ActiveTestSuite extends TestSuite {
+public class ActiveTestSuite extends JCSTestSuite {
     private volatile int fActiveTestDeathCount;
 
     public ActiveTestSuite() {

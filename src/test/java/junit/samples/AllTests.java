@@ -1,7 +1,7 @@
 package junit.samples;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * TestSuite that runs all the sample tests
@@ -13,9 +13,9 @@ public class AllTests {
     }
 
     public static Test suite() {
-        TestSuite suite = new TestSuite("All JUnit Tests");
+        JCSTestSuite suite = new JCSTestSuite("All JUnit Tests");
         suite.addTest(ListTest.suite());
-        suite.addTest(new TestSuite(junit.samples.money.MoneyTest.class));
+        suite.addTest(new JCSTestSuite(junit.samples.money.MoneyTest.class));
         suite.addTest(junit.tests.AllTests.suite());
         return suite;
     }

@@ -2,7 +2,7 @@ package junit.tests.runner;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.runner.BaseTestRunner;
 
 public class BaseTestRunnerTest extends TestCase {
@@ -40,7 +40,7 @@ public class BaseTestRunnerTest extends TestCase {
 
     public static class DoesntExtendTestCase {
         public static Test suite() {
-            return new TestSuite();
+            return new JCSTestSuite();
         }
     }
 

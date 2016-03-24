@@ -5,7 +5,7 @@ import java.util.List;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * A sample test case, testing {@link java.util.ArrayList}.
@@ -28,7 +28,7 @@ public class ListTest extends TestCase {
     }
 
     public static Test suite() {
-        return new TestSuite(ListTest.class);
+        return new JCSTestSuite(ListTest.class);
     }
 
     public void testCapacity() {

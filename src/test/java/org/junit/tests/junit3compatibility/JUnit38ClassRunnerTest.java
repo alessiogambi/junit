@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 import junit.extensions.TestDecorator;
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.internal.runners.JUnit38ClassRunner;
@@ -32,7 +32,7 @@ public class JUnit38ClassRunnerTest {
 
     @Test
     public void plansDecoratorCorrectly() {
-        JUnit38ClassRunner runner = new JUnit38ClassRunner(new TestDecorator(new TestSuite(MyTest.class)));
+        JUnit38ClassRunner runner = new JUnit38ClassRunner(new TestDecorator(new JCSTestSuite(MyTest.class)));
         assertEquals(1, runner.testCount());
     }
 

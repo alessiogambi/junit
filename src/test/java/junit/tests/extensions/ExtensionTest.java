@@ -4,7 +4,7 @@ import junit.extensions.TestSetup;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.tests.WasRun;
 
 /**
@@ -54,7 +54,7 @@ public class ExtensionTest extends TestCase {
             }
         };
 
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(failure);
         suite.addTest(error);
 

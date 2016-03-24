@@ -8,7 +8,7 @@ import java.io.PrintStream;
 
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 public class TextRunnerTest extends TestCase {
 
@@ -51,7 +51,7 @@ public class TextRunnerTest extends TestCase {
                 }
         ));
         try {
-            TestResult result = junit.textui.TestRunner.run(new TestSuite());
+            TestResult result = junit.textui.TestRunner.run(new JCSTestSuite());
             assertTrue(result.wasSuccessful());
         } finally {
             System.setOut(oldOut);

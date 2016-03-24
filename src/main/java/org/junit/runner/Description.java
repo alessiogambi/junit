@@ -24,7 +24,7 @@ import org.junit.runners.model.Statement;
  * aside from counting their tests.
  * <p>
  * In the past, we used the raw {@link junit.framework.TestCase}s and
- * {@link junit.framework.TestSuite}s to display the tree of tests. This was no
+ * {@link junit.framework.JCSTestSuite}s to display the tree of tests. This was no
  * longer viable in JUnit 4 because atomic tests no longer have a superclass
  * below {@link Object}. We needed a way to pass a class and name together.
  * Description emerged from this.

@@ -6,7 +6,7 @@ import java.io.PrintStream;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.runner.BaseTestRunner;
 import junit.runner.Version;
 
@@ -59,7 +59,7 @@ public class TestRunner extends BaseTestRunner {
      * Runs a suite extracted from a TestCase subclass.
      */
     static public void run(Class<? extends TestCase> testClass) {
-        run(new TestSuite(testClass));
+        run(new JCSTestSuite(testClass));
     }
 
     /**
@@ -188,7 +188,7 @@ public class TestRunner extends BaseTestRunner {
 
     protected TestResult runSingleMethod(String testCase, String method, boolean wait) throws Exception {
         Class<? extends TestCase> testClass = loadSuiteClass(testCase).asSubclass(TestCase.class);
-        Test test = TestSuite.createTest(testClass, method);
+        Test test = JCSTestSuite.createTest(testClass, method);
         return doRun(test, wait);
     }
 

@@ -38,6 +38,7 @@ public class SamplePolicy extends AbstractScalingPolicy {
         this.maxHosts = maxHosts;
         this.maxConcurrentTestsPerHost = maxConcurrentTestsPerHost;
         this.maxConcurrentTestsFromSameTestClassPerHost = maxConcurrentTestMethodsPerHost;
+
     }
 
     // Map<IHost, Set<ClientCloudObject>> mapping = new HashMap<IHost,
@@ -135,6 +136,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
+        System.out.println(
+                "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
+
         /*
          * Block the thread until the conditions for its execution are
          * satisfied, but only if it carries a Test
@@ -143,10 +147,10 @@ public class SamplePolicy extends AbstractScalingPolicy {
             synchronized (TestToHostMapping.get().getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
-                        // System.out.println("SamplePolicy.selectHost()"
-                        // + Thread.currentThread()
-                        // + " Waiting for lock.");
-                        TestToHostMapping.get().getTestsLock().wait();
+                        System.out.println("SamplePolicy.selectHost()"
+                                + Thread.currentThread()
+                                + " Waiting on TestLock for available slots.");
+                        mapping.getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         throw new JCloudScaleException(e);
@@ -194,8 +198,12 @@ public class SamplePolicy extends AbstractScalingPolicy {
                         if (maxConcurrentTestMethodsPerHostOk
                                 && maxConcurrentTestsPerHostOk) {
 
+                            // System.out.println(
+                            // "SamplePolicy.selectHost() Deploy");
                             mapping.deployTestObjectToHost(host, cloudObject);
-                            TestToHostMapping.get().getTestsLock().notifyAll();
+                            // System.out.println(
+                            // "SamplePolicy.selectHost() Deploy DONE ");
+                            mapping.getTestsLock().notifyAll();
                             return host;
                         }
                     }
@@ -208,22 +216,28 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 // new one.
                 // TODO Will this be ok ?! I am not sure !
                 synchronized (hostsLock) {
-                    IHost selectedHost = pool.startNewHost();
-                    mapping.registerHost(selectedHost);
+                    IHost host = pool.startNewHost();
+                    mapping.registerHost(host);
 
                     // System.out.println("SamplePolicy.selectHost() "
                     // + Thread.currentThread().getName() + " deploy CO "
                     // + cloudObject + " of class "
                     // + cloudObject.getCloudObjectClass() + " on "
-                    // + selectedHost.getIpAddress());
+                    // + host.getIpAddress());
 
                     // Bookkeeping
-                    mapping.deployTestObjectToHost(selectedHost, cloudObject);
-                    TestToHostMapping.get().getTestsLock().notifyAll();
-                    return selectedHost;
+                    // System.out.println("SamplePolicy.selectHost() Deploy");
+                    mapping.deployTestObjectToHost(host, cloudObject);
+                    // System.out
+                    // .println("SamplePolicy.selectHost() Deploy DONE ");
+
+                    mapping.getTestsLock().notifyAll();
+                    return host;
                 }
             }
         } else {
+            System.out.println("\n\t WARN SamplePolicy.selectHost() : "
+                    + cloudObject + " not a registered Test Object !");
             synchronized (hostsLock) {
                 return pickRandomOrStart(pool);
             }

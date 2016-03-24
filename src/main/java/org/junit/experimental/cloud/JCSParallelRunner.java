@@ -35,4 +35,5 @@ public class JCSParallelRunner extends JCSRunner {
         return super.toString() + "{concurrentTestsLimit="
                 + concurrentTestsLimit + ",threadsLimit=" + threadsLimit + "}";
     }
+
 }

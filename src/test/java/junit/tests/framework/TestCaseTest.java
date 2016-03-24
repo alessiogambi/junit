@@ -4,7 +4,7 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestFailure;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.tests.WasRun;
 
 /**
@@ -167,7 +167,7 @@ public class TestCaseTest extends TestCase {
     }
 
     public void testNoArgTestCasePasses() {
-        Test t = new TestSuite(NoArgTestCaseTest.class);
+        Test t = new JCSTestSuite(NoArgTestCaseTest.class);
         TestResult result = new TestResult();
         t.run(result);
         assertTrue(result.runCount() == 1);

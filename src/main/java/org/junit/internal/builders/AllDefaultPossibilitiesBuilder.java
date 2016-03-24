@@ -11,7 +11,8 @@ public class AllDefaultPossibilitiesBuilder extends RunnerBuilder {
 
     public AllDefaultPossibilitiesBuilder(boolean canUseSuiteMethod) {
         System.out.println(
-                "AllDefaultPossibilitiesBuilder.AllDefaultPossibilitiesBuilder()");
+                "AllDefaultPossibilitiesBuilder.AllDefaultPossibilitiesBuilder() canUseSuiteMethod "
+                        + canUseSuiteMethod);
         this.canUseSuiteMethod = canUseSuiteMethod;
     }
 
@@ -31,11 +32,26 @@ public class AllDefaultPossibilitiesBuilder extends RunnerBuilder {
     }
 
     protected JUnit4Builder junit4Builder() {
-        return new JUnit4Builder();
+        try {
+            System.out
+                    .println("AllDefaultPossibilitiesBuilder.junit4Builder()");
+            return new JUnit4Builder();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return null;
     }
 
     protected JUnit3Builder junit3Builder() {
-        return new JUnit3Builder();
+        try {
+            System.out
+                    .println("AllDefaultPossibilitiesBuilder.junit3Builder()");
+            return new JUnit3Builder();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return null;
+
     }
 
     protected AnnotatedBuilder annotatedBuilder() {
@@ -51,5 +67,10 @@ public class AllDefaultPossibilitiesBuilder extends RunnerBuilder {
             return new SuiteMethodBuilder();
         }
         return new NullBuilder();
+    }
+
+    public Runner safeCloudRunnerForClass(Class<?> testClass) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

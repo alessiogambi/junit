@@ -8,46 +8,39 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Vector;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
+import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
+import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.internal.MethodSorter;
+import org.junit.runners.model.RunnerScheduler;
 
-/**
- * A <code>TestSuite</code> is a <code>Composite</code> of Tests. It runs a
- * collection of test cases. Here is an example using the dynamic test
- * definition.
- * 
- * <pre>
- * TestSuite suite = new TestSuite();
- * suite.addTest(new MathTest("testAdd"));
- * suite.addTest(new MathTest("testDivideByZero"));
- * </pre>
- * <p>
- * Alternatively, a TestSuite can extract the tests to be run automatically. To
- * do so you pass the class of your TestCase class to the TestSuite constructor.
- * 
- * <pre>
- * TestSuite suite = new TestSuite(MathTest.class);
- * </pre>
- * <p>
- * This constructor creates a suite with all the methods starting with "test"
- * that take no arguments.
- * <p>
- * A final option is to do the same for a large array of test classes.
- * 
- * <pre>
- * Class[] testClasses = { MathTest.class, AnotherTest.class }
- * TestSuite suite= new TestSuite(testClasses);
- * </pre>
- *
- * @see Test
+/*
+ * Modified version to use the JCS Framework
  */
-public class TestSuite implements Test {
+public class JCSTestSuite implements Test {
+
+    // private static RunnerScheduler scheduler;
+
+    // public void setScheduler(RunnerScheduler scheduler) {
+    // this.scheduler = scheduler;
+    // }
 
     /**
      * ...as the moon sets over the early morning Merlin, Oregon mountains, our
      * intrepid adventurers type...
+     * 
+     * This is blocking ! So we need to do this trick: as soon as you schedule,
+     * enqueue in the scheduler another runnable for the execution !
      */
     static public Test createTest(Class<?> theClass, String name) {
         Constructor<?> constructor;
@@ -57,16 +50,52 @@ public class TestSuite implements Test {
             return warning("Class " + theClass.getName()
                     + " has no public constructor TestCase(String name) or TestCase()");
         }
+
         Object test;
         try {
-            if (constructor.getParameterTypes().length == 0) {
-                test = constructor.newInstance(new Object[0]);
-                if (test instanceof TestCase) {
-                    ((TestCase) test).setName(name);
+            if (theClass.isAnnotationPresent(CloudObject.class)) {
+                System.out.println("JCSTestSuite.createTest() -> " + theClass
+                        + " is a cloud test case");
+
+                TestToHostMapping.get().testScheduled(theClass);
+
+                if (constructor.getParameterTypes().length == 0) {
+
+                    // Probably null would work just fine
+                    test = CloudObjects.create(constructor, theClass,
+                            new Object[0]);
+
+                    // At this point we should already have the sample policy
+                    // deploying our stuff !
+
+                    // test = constructor.newInstance(new Object[0]);
+                    if (test instanceof TestCase) {
+                        System.out.println(
+                                "JCSTestSuite.createTest() name is " + name);
+                        ((TestCase) test).setName(name);
+                    }
+                } else {
+                    // TODO Not sure if this will result in an error !
+                    test = CloudObjects.create(constructor, theClass,
+                            new Object[] { name });
+                    // test = constructor.newInstance(new Object[] { name });
                 }
+
+                TestToHostMapping.get().testDeployed((Test) test);
+
             } else {
-                test = constructor.newInstance(new Object[] { name });
+                System.out.println("JCSTestSuite.createTest() -> " + theClass
+                        + " is a regular test case, proceed normally");
+                if (constructor.getParameterTypes().length == 0) {
+                    test = constructor.newInstance(new Object[0]);
+                    if (test instanceof TestCase) {
+                        ((TestCase) test).setName(name);
+                    }
+                } else {
+                    test = constructor.newInstance(new Object[] { name });
+                }
             }
+
         } catch (InstantiationException e) {
             return (warning("Cannot instantiate test case: " + name + " ("
                     + exceptionToString(e) + ")"));
@@ -126,7 +155,7 @@ public class TestSuite implements Test {
     /**
      * Constructs an empty TestSuite.
      */
-    public TestSuite() {
+    public JCSTestSuite() {
     }
 
     /**
@@ -134,7 +163,11 @@ public class TestSuite implements Test {
      * starting with "test" as test cases to the suite. Parts of this method
      * were written at 2337 meters in the Hueffihuette, Kanton Uri
      */
-    public TestSuite(final Class<?> theClass) {
+    public JCSTestSuite(final Class<?> theClass, RunnerScheduler scheduler) {
+        // this.scheduler = scheduler != null ? scheduler
+        // : new JCSParallelScheduler(theClass, 1);
+
+        // This adds the test methods - now this is asynch
         addTestsFromTestCase(theClass);
     }
 
@@ -158,6 +191,7 @@ public class TestSuite implements Test {
         List<String> names = new ArrayList<String>();
         while (Test.class.isAssignableFrom(superClass)) {
             for (Method each : MethodSorter.getDeclaredMethods(superClass)) {
+                // Now this is asynch !
                 addTestMethod(each, names, theClass);
             }
             superClass = superClass.getSuperclass();
@@ -170,9 +204,9 @@ public class TestSuite implements Test {
     /**
      * Constructs a TestSuite from the given class with the given name.
      *
-     * @see TestSuite#TestSuite(Class)
+     * @see JCSTestSuite#TestSuite(Class)
      */
-    public TestSuite(Class<? extends TestCase> theClass, String name) {
+    public JCSTestSuite(Class<? extends TestCase> theClass, String name) {
         this(theClass);
         setName(name);
     }
@@ -180,7 +214,7 @@ public class TestSuite implements Test {
     /**
      * Constructs an empty TestSuite.
      */
-    public TestSuite(String name) {
+    public JCSTestSuite(String name) {
         setName(name);
     }
 
@@ -190,15 +224,21 @@ public class TestSuite implements Test {
      * @param classes
      *            {@link TestCase}s
      */
-    public TestSuite(Class<?>... classes) {
+    public JCSTestSuite(Class<?>... classes) {
+        System.out.println("JCSTestSuite.JCSTestSuite() " + classes);
         for (Class<?> each : classes) {
             addTest(testCaseForClass(each));
         }
     }
 
     private Test testCaseForClass(Class<?> each) {
+        System.out.println("JCSTestSuite.testCaseForClass() " + each);
         if (TestCase.class.isAssignableFrom(each)) {
-            return new TestSuite(each.asSubclass(TestCase.class));
+            System.out.println("JCSTestSuite.testCaseForClass() Test Case");
+
+            return new JCSTestSuite(
+                    /* the actual test class is the subsclass */
+                    each.asSubclass(TestCase.class));
         } else {
             return warning(
                     each.getCanonicalName() + " does not extend TestCase");
@@ -209,9 +249,9 @@ public class TestSuite implements Test {
      * Constructs a TestSuite from the given array of classes with the given
      * name.
      *
-     * @see TestSuite#TestSuite(Class[])
+     * @see JCSTestSuite#TestSuite(Class[])
      */
-    public TestSuite(Class<? extends TestCase>[] classes, String name) {
+    public JCSTestSuite(Class<? extends TestCase>[] classes, String name) {
         this(classes);
         setName(name);
     }
@@ -227,7 +267,7 @@ public class TestSuite implements Test {
      * Adds the tests from the given class to the suite
      */
     public void addTestSuite(Class<? extends TestCase> testClass) {
-        addTest(new TestSuite(testClass));
+        addTest(new JCSTestSuite(testClass));
     }
 
     /**
@@ -252,17 +292,81 @@ public class TestSuite implements Test {
     /**
      * Runs the tests and collects their result in a TestResult.
      */
-    public void run(TestResult result) {
+    @Override
+    public void run(final TestResult result) {
+
         for (Test each : fTests) {
+            System.out.println("JCSTestSuite.run() each " + each);
             if (result.shouldStop()) {
                 break;
             }
             runTest(each, result);
         }
+        // Since at this point Tests might not be created with can process them
+        // as soon as they are created
+
+        // new code
+        // try {
+        // while (!tasks.isEmpty()) {
+        // Future<Test> feach = completionService.take();
+        // // Remove from the queue
+        // tasks.remove(feach);
+        // //
+        // try {
+        // final Test each = feach.get();
+        //
+        // System.out.println(
+        // "JCSTestSuite.run() each TEST CREATED " + each);
+        //
+        // if (result.shouldStop()) {
+        // break;
+        // }
+        //
+        // // Submit for the parallel execution with the scheduler
+        // System.out.println(
+        // "JCSTestSuite.run() each SUBMIT FOR PARALLEL EXECUTION "
+        // + each);
+        // scheduler.schedule(new Runnable() {
+        //
+        // @Override
+        // public void run() {
+        // System.out.println(
+        // "JCSTestSuite.run() each IN EXECUTION "
+        // + each);
+        // runTest(each, result);
+        // }
+        // });
+        //
+        // } catch (ExecutionException e) {
+        // e.printStackTrace();
+        // break;
+        // }
+        // }
+        // } catch (InterruptedException e) {
+        // Thread.currentThread().interrupt();
+        // } finally {
+        // while (!tasks.isEmpty())
+        // tasks.poll().cancel(true);
+        // executorService.shutdownNow();
+        // }
+        //
+        // // At this point we submitted all the tests so we can wait for them
+        // to
+        // // finish
+        // scheduler.finished();
+        // // System.out.println(
+        // // "==========================\n" + "Finished all tests for "
+        // // + factoryName + "\n" + "==========================\n");
+
     }
 
     public void runTest(Test test, TestResult result) {
-        test.run(result);
+        try {
+            TestToHostMapping.get().testStarts(test);
+            test.run(result);
+        } finally {
+            TestToHostMapping.get().testFinishes(test);
+        }
     }
 
     /**
@@ -306,9 +410,19 @@ public class TestSuite implements Test {
         return super.toString();
     }
 
+    private ExecutorService executorService = Executors.newCachedThreadPool();// new
+                                                                              // NamedThreadFactory("JCSTestSuite"));
+
+    // Order of finishing does not matter. TODO Notify the shared data about it
+    // !
+    private CompletionService<Test> completionService = new ExecutorCompletionService<Test>(
+            executorService);
+
+    private Queue<Future<Test>> tasks = new LinkedList<Future<Test>>();
+
     private void addTestMethod(Method m, List<String> names,
-            Class<?> theClass) {
-        String name = m.getName();
+            final Class<?> theClass) {
+        final String name = m.getName();
         if (names.contains(name)) {
             return;
         }
@@ -321,6 +435,19 @@ public class TestSuite implements Test {
         }
         names.add(name);
         addTest(createTest(theClass, name));
+
+        // All the objects are asynchronosuly created
+        // System.out.println(
+        // "JCSTestSuite.addTestMethod() Enqueue test creation for "
+        // + theClass + "." + name);
+        // tasks.offer(//
+        // completionService.submit(new Callable<Test>() {
+        // @Override
+        // public Test call() throws Exception {
+        // return createTest(theClass, name);
+        // }
+        // }));
+
     }
 
     private boolean isPublicTestMethod(Method m) {

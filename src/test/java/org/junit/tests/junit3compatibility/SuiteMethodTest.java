@@ -7,7 +7,7 @@ import static org.junit.Assert.fail;
 
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.Description;
@@ -24,7 +24,7 @@ public class SuiteMethodTest {
         }
 
         public static junit.framework.Test suite() {
-            TestSuite suite = new TestSuite();
+            JCSTestSuite suite = new JCSTestSuite();
             suite.addTest(new OldTest("notObviouslyATest"));
             return suite;
         }

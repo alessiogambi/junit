@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.HashSet;
 
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -227,7 +227,7 @@ public class AnnotationTest extends TestCase {
     }
 
     public void testOldSuiteTest() throws Exception {
-        TestSuite suite = new TestSuite(OldSuiteTest.class);
+        JCSTestSuite suite = new JCSTestSuite(OldSuiteTest.class);
         JUnitCore runner = new JUnitCore();
         runner.run(suite);
         assertTrue(run);

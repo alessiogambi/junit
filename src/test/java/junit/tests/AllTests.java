@@ -1,7 +1,7 @@
 package junit.tests;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * TestSuite that runs all the JUnit tests
@@ -13,7 +13,7 @@ public class AllTests {
     }
 
     public static Test suite() {
-        TestSuite suite = new TestSuite("Framework Tests");
+        JCSTestSuite suite = new JCSTestSuite("Framework Tests");
         suite.addTest(junit.tests.framework.AllTests.suite());
         suite.addTest(junit.tests.runner.AllTests.suite());
         suite.addTest(junit.tests.extensions.AllTests.suite());

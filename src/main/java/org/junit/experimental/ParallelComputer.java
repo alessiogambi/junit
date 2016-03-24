@@ -1,67 +1,52 @@
 package org.junit.experimental;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
+import org.junit.experimental.cloud.scheduling.JCSParallelScheduler;
 import org.junit.runner.Computer;
 import org.junit.runner.Runner;
 import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
-import org.junit.runners.model.RunnerScheduler;
 
 public class ParallelComputer extends Computer {
-    private final boolean classes;
 
-    private final boolean methods;
+    private int concurrentTestCasesLimit;
 
-    public ParallelComputer(boolean classes, boolean methods) {
-        this.classes = classes;
-        this.methods = methods;
-    }
+    private int concurrentTestPerTestClassLimit;
 
-    public static Computer classes() {
-        return new ParallelComputer(true, false);
-    }
-
-    public static Computer methods() {
-        return new ParallelComputer(false, true);
-    }
-
-    private static Runner parallelize(Runner runner) {
-        if (runner instanceof ParentRunner) {
-            ((ParentRunner<?>) runner).setScheduler(new RunnerScheduler() {
-                private final ExecutorService fService = Executors.newCachedThreadPool();
-
-                public void schedule(Runnable childStatement) {
-                    fService.submit(childStatement);
-                }
-
-                public void finished() {
-                    try {
-                        fService.shutdown();
-                        fService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace(System.err);
-                    }
-                }
-            });
-        }
-        return runner;
+    public ParallelComputer(int concurrentTestCasesLimit,
+            int concurrentTestPerTestClassLimit) {
+        super();
+        this.concurrentTestCasesLimit = concurrentTestCasesLimit;
+        this.concurrentTestPerTestClassLimit = concurrentTestPerTestClassLimit;
     }
 
     @Override
     public Runner getSuite(RunnerBuilder builder, java.lang.Class<?>[] classes)
             throws InitializationError {
+
         Runner suite = super.getSuite(builder, classes);
-        return this.classes ? parallelize(suite) : suite;
+        ((ParentRunner<?>) suite).setScheduler(
+                new JCSParallelScheduler(null, concurrentTestCasesLimit));
+        return suite;
     }
 
     @Override
     protected Runner getRunner(RunnerBuilder builder, Class<?> testClass)
             throws Throwable {
         Runner runner = super.getRunner(builder, testClass);
-        return methods ? parallelize(runner) : runner;
+        ((ParentRunner<?>) runner).setScheduler(new JCSParallelScheduler(null,
+                concurrentTestPerTestClassLimit));
+
+        return runner;
+    }
+
+    public static Class<?> classes() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public static Class<?> methods() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

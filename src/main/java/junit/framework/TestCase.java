@@ -71,7 +71,7 @@ import java.lang.reflect.Modifier;
  * </pre>
  *
  * @see TestResult
- * @see TestSuite
+ * @see JCSTestSuite
  */
 public abstract class TestCase extends Assert implements Test {
     /**

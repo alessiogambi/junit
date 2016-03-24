@@ -33,7 +33,7 @@ public class JUnit4TestAdapterCache extends HashMap<Description, Test> {
         if (description.isTest()) {
             return new JUnit4TestCaseFacade(description);
         } else {
-            TestSuite suite = new TestSuite(description.getDisplayName());
+            JCSTestSuite suite = new JCSTestSuite(description.getDisplayName());
             for (Description child : description.getChildren()) {
                 suite.addTest(asTest(child));
             }

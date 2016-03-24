@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.RunWith;
 import org.junit.runners.AllTests;
@@ -25,7 +25,7 @@ public class AllTestsTest {
     @RunWith(AllTests.class)
     public static class All {
         static public junit.framework.Test suite() {
-            TestSuite suite = new TestSuite();
+            JCSTestSuite suite = new JCSTestSuite();
             suite.addTestSuite(OneTest.class);
             return suite;
         }
@@ -61,7 +61,7 @@ public class AllTestsTest {
     @RunWith(AllTests.class)
     public static class AllJUnit4 {
         static public junit.framework.Test suite() {
-            TestSuite suite = new TestSuite();
+            JCSTestSuite suite = new JCSTestSuite();
             suite.addTest(new JUnit4TestAdapter(JUnit4Test.class));
             return suite;
         }

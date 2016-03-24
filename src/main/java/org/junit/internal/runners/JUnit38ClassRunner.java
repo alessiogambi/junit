@@ -6,7 +6,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestListener;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
+import org.junit.experimental.cloud.scheduling.JCSParallelScheduler;
 import org.junit.runner.Describable;
 import org.junit.runner.Description;
 import org.junit.runner.Runner;
@@ -17,12 +18,14 @@ import org.junit.runner.manipulation.Sortable;
 import org.junit.runner.manipulation.Sorter;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.model.RunnerScheduler;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
 public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
-    private static final class OldTestClassAdaptingListener implements
-            TestListener {
+    private static final class OldTestClassAdaptingListener
+            implements TestListener {
         private final RunNotifier notifier;
 
         private OldTestClassAdaptingListener(RunNotifier notifier) {
@@ -48,7 +51,8 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
                 Describable facade = (Describable) test;
                 return facade.getDescription();
             }
-            return Description.createTestDescription(getEffectiveClass(test), getName(test));
+            return Description.createTestDescription(getEffectiveClass(test),
+                    getName(test));
         }
 
         private Class<? extends Test> getEffectiveClass(Test test) {
@@ -71,7 +75,8 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
     private volatile Test test;
 
     public JUnit38ClassRunner(Class<?> klass) {
-        this(new TestSuite(klass.asSubclass(TestCase.class)));
+        // TODO Probably the Parallel Stuff shall be done here !
+        this(new JCSTestSuite(klass.asSubclass(TestCase.class)));
     }
 
     public JUnit38ClassRunner(Test test) {
@@ -98,11 +103,12 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
     private static Description makeDescription(Test test) {
         if (test instanceof TestCase) {
             TestCase tc = (TestCase) test;
-            return Description.createTestDescription(tc.getClass(), tc.getName(),
-                    getAnnotations(tc));
-        } else if (test instanceof TestSuite) {
-            TestSuite ts = (TestSuite) test;
-            String name = ts.getName() == null ? createSuiteDescription(ts) : ts.getName();
+            return Description.createTestDescription(tc.getClass(),
+                    tc.getName(), getAnnotations(tc));
+        } else if (test instanceof JCSTestSuite) {
+            JCSTestSuite ts = (JCSTestSuite) test;
+            String name = ts.getName() == null ? createSuiteDescription(ts)
+                    : ts.getName();
             Description description = Description.createSuiteDescription(name);
             int n = ts.testCount();
             for (int i = 0; i < n; i++) {
@@ -124,7 +130,9 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
 
     /**
      * Get the annotations associated with given TestCase.
-     * @param test the TestCase.
+     * 
+     * @param test
+     *            the TestCase.
      */
     private static Annotation[] getAnnotations(TestCase test) {
         try {
@@ -136,9 +144,10 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
         return new Annotation[0];
     }
 
-    private static String createSuiteDescription(TestSuite ts) {
+    private static String createSuiteDescription(JCSTestSuite ts) {
         int count = ts.countTestCases();
-        String example = count == 0 ? "" : String.format(" [example: %s]", ts.testAt(0));
+        String example = count == 0 ? ""
+                : String.format(" [example: %s]", ts.testAt(0));
         return String.format("TestSuite with %s tests%s", count, example);
     }
 
@@ -146,9 +155,9 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
         if (getTest() instanceof Filterable) {
             Filterable adapter = (Filterable) getTest();
             adapter.filter(filter);
-        } else if (getTest() instanceof TestSuite) {
-            TestSuite suite = (TestSuite) getTest();
-            TestSuite filtered = new TestSuite(suite.getName());
+        } else if (getTest() instanceof JCSTestSuite) {
+            JCSTestSuite suite = (JCSTestSuite) getTest();
+            JCSTestSuite filtered = new JCSTestSuite(suite.getName());
             int n = suite.testCount();
             for (int i = 0; i < n; i++) {
                 Test test = suite.testAt(i);
@@ -176,5 +185,13 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
 
     private Test getTest() {
         return test;
+    }
+
+    public void setScheduler(RunnerScheduler scheduler) {
+        System.out.println("JUnit38ClassRunner.setScheduler()");
+        if (test instanceof JCSTestSuite) {
+            ((JCSTestSuite) test).setScheduler(scheduler);
+        }
+
     }
 }

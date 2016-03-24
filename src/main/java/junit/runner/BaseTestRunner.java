@@ -18,7 +18,7 @@ import java.util.Properties;
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestListener;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * Base class for all test runners.
@@ -115,7 +115,7 @@ public abstract class BaseTestRunner implements TestListener {
         } catch (Exception e) {
             // try to extract a test suite automatically
             clearStatus();
-            return new TestSuite(testClass);
+            return new JCSTestSuite(testClass);
         }
         if (!Modifier.isStatic(suiteMethod.getModifiers())) {
             runFailed("Suite() method must be static");

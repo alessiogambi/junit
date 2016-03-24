@@ -1,7 +1,7 @@
 package junit.tests.framework;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * TestSuite that runs all the sample tests
@@ -13,7 +13,7 @@ public class AllTests {
     }
 
     public static Test suite() {
-        TestSuite suite = new TestSuite("Framework Tests");
+        JCSTestSuite suite = new JCSTestSuite("Framework Tests");
         suite.addTestSuite(TestCaseTest.class);
         suite.addTest(SuiteTest.suite()); // Tests suite building, so can't use automatic test extraction
         suite.addTestSuite(TestListenerTest.class);

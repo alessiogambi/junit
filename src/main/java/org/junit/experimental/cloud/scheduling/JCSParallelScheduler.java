@@ -44,6 +44,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private final String factoryName;
 
+    private final boolean wrappingSuite;
+
     /**
      * Since threads limit here enforces test limit we can also use one
      * parameter.
@@ -58,7 +60,12 @@ public class JCSParallelScheduler implements RunnerScheduler {
     public JCSParallelScheduler(Class<?> klass, int testLimit,
             int threadLimit) {
 
-        factoryName = klass != null ? klass.getSimpleName() : "Wrapping SUITE";
+        wrappingSuite = klass == null;
+
+        factoryName = wrappingSuite
+                ? "Wrapping SUITE {concurrent.test.cases=" + testLimit
+                        + ",concurrent.threads=" + threadLimit + "}"
+                : klass.getSimpleName();
 
         // TODO Change this if you want to control the scheduling order, e.g.,
         // with priority or stuff
@@ -112,44 +119,43 @@ public class JCSParallelScheduler implements RunnerScheduler {
          * concurrency management. Here I guess is the place were to enforce any
          * specific ordering (or reordering of elements)
          */
+        // System.out.println(Thread.currentThread() + "Submit " +
+        // childStatement
+        // + " for execution");
         tasks.offer(completionService.submit(new Runnable() {
             @Override
             public void run() {
                 try {
-                    try {
-                        // System.out.println(Thread.currentThread()
-                        // + " acquiring permit from main semaphore");
-                        testsSemaphore.acquire();
-                        // System.out.println(Thread.currentThread()
-                        // + " starting test(s) execution ");
-                        childStatement.run();
-                    } catch (InterruptedException e) {
-                        System.err.println(
-                                Thread.currentThread() + " INTERRUPTED");
-                    }
-                } finally {
-                    testsSemaphore.release();
-                    // System.out.println(Thread.currentThread()
-                    // + " released permit from main semaphore");
-                }
 
+                    // System.out.println(Thread.currentThread() + " "
+                    // + childStatement + " start execution " + " using "
+                    // + testsSemaphore);
+                    testsSemaphore.acquire();
+                    // Execute
+                    childStatement.run();
+                } catch (InterruptedException e) {
+                    System.err.println(Thread.currentThread() + " INTERRUPTED");
+                } finally {
+                    // System.out.println(Thread.currentThread()
+                    // + " release permit from semaphore " + testsSemaphore
+                    // + "{" + testsSemaphore.availablePermits() + "}");
+                    testsSemaphore.release();
+                }
             }
         }, null));
     }
 
     @Override
     public void finished() {
-        System.out.println("==========================\n"
-                + "Finished submission of all tests for " + factoryName + "\n"
-                + "Wait for tests to end\n" + "==========================\n");
+        // System.out.println("==========================\n"
+        // + "Finished submission of all tests for " + factoryName + "\n"
+        // + "Wait for tests to end\n" + "==========================\n");
         try {
             while (!tasks.isEmpty()) {
                 Future<Void> finishedTask = completionService.take();
-                // Whenever something - i.e., test - finishes take will unlock
+
                 tasks.remove(finishedTask);
-                // Notify Everybody !
-                // System.out.println(
-                // "JCSParallelScheduler.finished() " + finishedTask);
+
                 synchronized (TestToHostMapping.get().getTestsLock()) {
                     TestToHostMapping.get().getTestsLock().notifyAll();
                 }
@@ -161,9 +167,10 @@ public class JCSParallelScheduler implements RunnerScheduler {
                 tasks.poll().cancel(true);
             executorService.shutdownNow();
         }
-        System.out.println(
-                "==========================\n" + "Finished all tests for "
-                        + factoryName + "\n" + "==========================\n");
+        // System.out.println(
+        // "==========================\n" + "Finished all tests for "
+        // + factoryName + "\n" + "==========================\n");
+
     }
 
     // Note this is shared among all the JCSParallelRunner instances

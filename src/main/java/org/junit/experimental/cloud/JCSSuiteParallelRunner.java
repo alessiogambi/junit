@@ -218,8 +218,9 @@ public class JCSSuiteParallelRunner extends Suite {
             int concurrentTestCasesLimit, int threadLimit)
             throws InitializationError {
         super(klass, runners);
-        System.out.println(
-                "JCSSuiteParallelRunner.JCSSuiteParallelRunner() CREATING THE WRAPPING SUITE!");
+        // System.out.println(
+        // "JCSSuiteParallelRunner.JCSSuiteParallelRunner() CREATING THE
+        // WRAPPING SUITE!");
         setScheduler(new JCSParallelScheduler(klass, concurrentTestCasesLimit,
                 threadLimit));
     }

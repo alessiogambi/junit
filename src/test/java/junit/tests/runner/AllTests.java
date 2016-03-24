@@ -1,7 +1,7 @@
 package junit.tests.runner;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * TestSuite that runs all the sample tests
@@ -13,7 +13,7 @@ public class AllTests {
     }
 
     public static Test suite() { // Collect tests manually because we have to test class collection code
-        TestSuite suite = new TestSuite("Framework Tests");
+        JCSTestSuite suite = new JCSTestSuite("Framework Tests");
         suite.addTestSuite(StackFilterTest.class);
         suite.addTestSuite(ResultTest.class);
         suite.addTestSuite(BaseTestRunnerTest.class);

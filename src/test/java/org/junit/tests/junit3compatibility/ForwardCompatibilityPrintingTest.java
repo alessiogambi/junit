@@ -7,7 +7,7 @@ import java.io.PrintStream;
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 import junit.textui.ResultPrinter;
 import junit.textui.TestRunner;
 import org.junit.Assert;
@@ -43,7 +43,7 @@ public class ForwardCompatibilityPrintingTest extends TestCase {
             }
         };
         runner.setPrinter(printer);
-        TestSuite suite = new TestSuite();
+        JCSTestSuite suite = new JCSTestSuite();
         suite.addTest(new TestCase() {
             @Override
             public void runTest() throws Exception {

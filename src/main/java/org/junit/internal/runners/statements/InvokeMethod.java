@@ -15,6 +15,7 @@ public class InvokeMethod extends Statement {
 
     @Override
     public void evaluate() throws Throwable {
+        // This one is the one that actually perform the call and the deployment
         testMethod.invokeExplosively(target);
     }
 

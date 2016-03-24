@@ -264,12 +264,24 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
     protected Statement methodBlock(FrameworkMethod method) {
         Object test;
         try {
+
+            // System.out.println(
+            // "BlockJUnit4ClassRunner.methodBlock() About to create a CO ! ");
             test = new ReflectiveCallable() {
                 @Override
                 protected Object runReflectiveCall() throws Throwable {
+                    // TODO This is where the actual object is created and
+                    // System.out.println(
+                    // "BlockJUnit4ClassRunner.methodBlock(...).new
+                    // ReflectiveCallable() {...}.runReflectiveCall()");
                     return createTest();
                 }
-            }.run();
+            }.run(); // This execute the call
+
+            // System.out.println(
+            // "BlockJUnit4ClassRunner.methodBlock() At this point CO should be
+            // created. Status must be DEPLOYED !");
+
         } catch (Throwable e) {
             return new Fail(e);
         }

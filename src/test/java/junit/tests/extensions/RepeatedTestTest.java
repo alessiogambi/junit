@@ -4,13 +4,13 @@ import junit.extensions.RepeatedTest;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * Testing the RepeatedTest support.
  */
 public class RepeatedTestTest extends TestCase {
-    private TestSuite fSuite;
+    private JCSTestSuite fSuite;
 
     public static class SuccessTest extends TestCase {
 
@@ -21,7 +21,7 @@ public class RepeatedTestTest extends TestCase {
 
     public RepeatedTestTest(String name) {
         super(name);
-        fSuite = new TestSuite();
+        fSuite = new JCSTestSuite();
         fSuite.addTest(new SuccessTest());
         fSuite.addTest(new SuccessTest());
     }

@@ -2,7 +2,7 @@ package junit.samples;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import junit.framework.JCSTestSuite;
 
 /**
  * Some simple tests.
@@ -40,7 +40,7 @@ public class SimpleTest extends TestCase {
         /*
            * the dynamic way
            */
-        return new TestSuite(SimpleTest.class);
+        return new JCSTestSuite(SimpleTest.class);
     }
 
     public void testAdd() {

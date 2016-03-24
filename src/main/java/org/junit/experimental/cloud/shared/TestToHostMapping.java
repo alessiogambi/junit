@@ -1,5 +1,6 @@
 package org.junit.experimental.cloud.shared;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -18,6 +19,8 @@ import org.junit.runner.Description;
 public class TestToHostMapping {
 
     private static final String SCHEDULED = "SCHEDULED";
+
+    private static final String DEPLOYED = "DEPLOYED";
 
     private static final String STARTED = "STARTED";
 
@@ -42,7 +45,7 @@ public class TestToHostMapping {
 
     private Map<IHost, AtomicInteger> runningTestOnHostMapping = new ConcurrentHashMap<IHost, AtomicInteger>();
 
-    private Map<IHost, AtomicInteger> scheduledTestOnHostMapping = new ConcurrentHashMap<IHost, AtomicInteger>();
+    private Map<IHost, AtomicInteger> deployedTestOnHostMapping = new ConcurrentHashMap<IHost, AtomicInteger>();
 
     private Map<ClientCloudObject, String> testObjectsToStatuMapping = new ConcurrentHashMap<ClientCloudObject, String>();
 
@@ -50,11 +53,25 @@ public class TestToHostMapping {
 
     }
 
-    // FIXME UNSAFE !! NON-DEFENSIVE
     private synchronized void updateTestObjectByDescription(
             Description description, String status) {
 
+        if (SCHEDULED.equals(status)) {
+            System.out.println("\t\t\t" + description.getClassName() + " "
+                    + description.getDisplayName() + " "
+                    + description.getMethodName() + " Test: no CO yet "
+                    + "null/initial --> " + status);
+            return;
+        } else if (DEPLOYED.equals(status)) {
+            System.out.println("\t\t\t" + description.getClassName() + " "
+                    + description.getDisplayName() + " "
+                    + description.getMethodName() + " Test: no CO yet "
+                    + SCHEDULED + " --> " + status);
+            return;
+        }
+
         if (description.getStatement() instanceof InvokeMethod) {
+
             Object proxyObject = ((InvokeMethod) description.getStatement())
                     .getTarget();
 
@@ -65,6 +82,7 @@ public class TestToHostMapping {
             String previousState = testObjectsToStatuMapping.put(cloudObject,
                     status);
 
+            // For Deployed this should be aready deployed !
             System.out.println("\t\t\t" + description.getClassName() + " "
                     + description.getDisplayName() + " "
                     + description.getMethodName() + " Test: " + cloudObject
@@ -74,24 +92,28 @@ public class TestToHostMapping {
             IHost host = testToHostMapping.get(cloudObject);
 
             AtomicInteger runningTest = null;
+            AtomicInteger deployedTest = null;
 
             try {
                 runningTest = runningTestOnHostMapping.containsKey(host)
                         ? runningTestOnHostMapping.get(host) : null;
+
+                deployedTest = deployedTestOnHostMapping.containsKey(host)
+                        ? deployedTestOnHostMapping.get(host) : null;
+
             } catch (NullPointerException npe) {
                 npe.printStackTrace();
-                System.out.println(
-                        "TestToHostMapping.updateTestObjectByDescription() DUMP:");
-                System.out.println("HOST IS " + host + " For "
-                        + description.getMethodName() + " Cloud Object "
-                        + cloudObject + " and proxy object " + proxyObject);
                 System.err.println(
-                        "\n------ \ntestToHostMapping full content for "
-                                + Thread.currentThread() + " \n "
-                                + testToHostMapping + "\n-------");
+                        "TestToHostMapping.updateTestObjectByDescription() DUMP:\n"
+                                + "HOST IS " + host + " For "
+                                + description.getMethodName() + " Cloud Object "
+                                + cloudObject + " and proxy object "
+                                + proxyObject + "\n" +
 
-                System.err.println(
-                        "\n------ \nhostToTestMapping full content for "
+                                "\n------ \ntestToHostMapping full content for "
+                                + Thread.currentThread() + " \n "
+                                + testToHostMapping + "\n------- \n"
+                                + "\n------ \nhostToTestMapping full content for "
                                 + Thread.currentThread() + " \n "
                                 + hostToTestMapping + "\n-------");
 
@@ -101,15 +123,10 @@ public class TestToHostMapping {
                 return;
 
             switch (status) {
+
             case STARTED:
                 runningTest.incrementAndGet();
-                // Remove the scheduled counter... this should be atomic !
-                AtomicInteger scheduledTest = null;
-
-                scheduledTest = scheduledTestOnHostMapping.containsKey(host)
-                        ? scheduledTestOnHostMapping.get(host) : null;
-                if (scheduledTest != null)
-                    scheduledTest.decrementAndGet();
+                deployedTest.decrementAndGet();
 
                 break;
 
@@ -136,6 +153,15 @@ public class TestToHostMapping {
         updateTestObjectByDescription(description, STARTED);
     }
 
+    public void testDeployed(Description description) {
+        updateTestObjectByDescription(description, DEPLOYED);
+
+    }
+
+    public void testScheduled(Description description) {
+        updateTestObjectByDescription(description, SCHEDULED);
+    }
+
     public void testFinishes(Description description) {
         updateTestObjectByDescription(description, FINISHED);
     }
@@ -144,16 +170,124 @@ public class TestToHostMapping {
         updateTestObjectByDescription(description, FAILED);
     }
 
+    // JUnit 3 Compatibility
+
+    private synchronized void updateTestObject(Object test, String status) {
+
+        System.out.println("TestToHostMapping.updateTestObject() " + test);
+
+        if (SCHEDULED.equals(status)) {
+            System.out.println("\t\t\t" + test + " Test: no CO yet "
+                    + "null/initial --> " + status);
+            return;
+        } else if (DEPLOYED.equals(status)) {
+            System.out.println(
+                    "\t\t\t" + test + " " + SCHEDULED + " --> " + status);
+            return;
+        }
+
+        // The object that we pass along is the actual test class object, and we
+        // assume that there is a different instance for a different test
+        // method!
+        ClientCloudObject cloudObject = CloudManager.getInstance()
+                .getClientCloudObject(test);
+
+        // Update the status - Note this
+        String previousState = testObjectsToStatuMapping.put(cloudObject,
+                status);
+
+        // For Deployed this should be aready deployed !
+        System.out.println("\t\t\t" + test + " Test: " + cloudObject + " "
+                + previousState + " --> " + status);
+
+        // Update the count
+        IHost host = testToHostMapping.get(cloudObject);
+
+        AtomicInteger runningTest = null;
+        AtomicInteger deployedTest = null;
+
+        try {
+            runningTest = runningTestOnHostMapping.containsKey(host)
+                    ? runningTestOnHostMapping.get(host) : null;
+
+            deployedTest = deployedTestOnHostMapping.containsKey(host)
+                    ? deployedTestOnHostMapping.get(host) : null;
+
+        } catch (NullPointerException npe) {
+            npe.printStackTrace();
+            System.err.println(
+                    "TestToHostMapping.updateTestObjectByDescription() DUMP:\n"
+                            + "HOST IS " + host + " For " + test
+                            + " Cloud Object " + cloudObject
+                            + " and proxy object " + test + "\n" +
+
+                            "\n------ \ntestToHostMapping full content for "
+                            + Thread.currentThread() + " \n "
+                            + testToHostMapping + "\n------- \n"
+                            + "\n------ \nhostToTestMapping full content for "
+                            + Thread.currentThread() + " \n "
+                            + hostToTestMapping + "\n-------");
+
+        }
+
+        if (runningTest == null)
+            return;
+
+        switch (status) {
+
+        case STARTED:
+            runningTest.incrementAndGet();
+            deployedTest.decrementAndGet();
+
+            break;
+
+        case FINISHED:
+            runningTest.decrementAndGet();
+            // At this point we can also do the clean up at app level
+            testObjectsToStatuMapping.keySet().remove(cloudObject);
+            testToHostMapping.keySet().remove(cloudObject);
+            hostToTestMapping.get(host).remove(cloudObject);
+
+            break;
+        }
+    }
+
+    public void testScheduled(Object test) {
+        updateTestObject(test, SCHEDULED);
+    }
+
+    public void testDeployed(Object test) {
+        updateTestObject(test, DEPLOYED);
+    }
+
+    public void testStarts(Object test) {
+        updateTestObject(test, STARTED);
+    }
+
+    public void testFinishes(Object test) {
+        updateTestObject(test, FINISHED);
+        //
+        //
+        System.out.println(
+                "TestToHostMapping.testFinishes(). Notify waiting threads");
+
+        synchronized (getTestsLock()) {
+            getTestsLock().notifyAll();
+        }
+    }
+
     public void registerHost(IHost host) {
+        System.out.println("TestToHostMapping.registerHost() " + host);
         hostToTestMapping.put(host, new HashSet<ClientCloudObject>());
         runningTestOnHostMapping.put(host, new AtomicInteger());
-        scheduledTestOnHostMapping.put(host, new AtomicInteger());
+        deployedTestOnHostMapping.put(host, new AtomicInteger());
     }
 
     public void deregisterHost(IHost host) {
+        System.out.println("TestToHostMapping.deregisterHost() " + host);
         hostToTestMapping.remove(host);
         runningTestOnHostMapping.remove(host);
-        scheduledTestOnHostMapping.remove(host);
+        deployedTestOnHostMapping.remove(host);
     }
 
     /**
@@ -171,8 +305,10 @@ public class TestToHostMapping {
                 + selectedHost + " " + hostToTestMapping.get(selectedHost));
         hostToTestMapping.get(selectedHost).add(cloudObject);
         testToHostMapping.put(cloudObject, selectedHost);
-        testObjectsToStatuMapping.put(cloudObject, SCHEDULED);
-        scheduledTestOnHostMapping.get(selectedHost).incrementAndGet();
+        // This create the entry to host the status. and
+        testObjectsToStatuMapping.put(cloudObject, DEPLOYED);
+        // Increment deployed objects tests
+        deployedTestOnHostMapping.get(selectedHost).incrementAndGet();
     }
 
     // TODO Shall we synch ? not sure the behavior of
@@ -181,7 +317,7 @@ public class TestToHostMapping {
             IHost host) {
         if (hostToTestMapping.containsKey(host))
             return Collections.unmodifiableSet(hostToTestMapping.get(host));
-        return null;
+        return new ArrayList<ClientCloudObject>();
     }
 
     public int countRunningTestsForHost(IHost host) {
@@ -190,8 +326,8 @@ public class TestToHostMapping {
     }
 
     public int countScheduledTestsForHost(IHost host) {
-        return scheduledTestOnHostMapping.containsKey(host)
-                ? scheduledTestOnHostMapping.get(host).get() : 0;
+        return deployedTestOnHostMapping.containsKey(host)
+                ? deployedTestOnHostMapping.get(host).get() : 0;
     }
 
     public void registerTestClass(Class clazz) {
@@ -260,4 +396,5 @@ public class TestToHostMapping {
     public void setThreadLimit(int threadLimit) {
         this.threadLimit = threadLimit;
     }
+
 }
