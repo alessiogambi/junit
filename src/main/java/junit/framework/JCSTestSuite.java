@@ -22,6 +22,7 @@ import java.util.concurrent.Future;
 
 import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
 import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
+import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
 import org.junit.experimental.cloud.scheduling.JCSParallelScheduler;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.internal.MethodSorter;
@@ -30,6 +31,7 @@ import org.junit.runners.model.RunnerScheduler;
 /*
  * Modified version to use the JCS Framework
  */
+@Logged
 public class JCSTestSuite implements Test {
 
     /**
@@ -51,8 +53,6 @@ public class JCSTestSuite implements Test {
         Object test;
         try {
             if (theClass.isAnnotationPresent(CloudObject.class)) {
-                System.out.println("JCSTestSuite.createTest() -> " + theClass
-                        + " is a cloud test case");
 
                 TestToHostMapping.get().testScheduled(theClass);
 
@@ -67,8 +67,6 @@ public class JCSTestSuite implements Test {
 
                     // test = constructor.newInstance(new Object[0]);
                     if (test instanceof TestCase) {
-                        System.out.println(
-                                "JCSTestSuite.createTest() name is " + name);
                         ((TestCase) test).setName(name);
                     }
                 } else {
@@ -81,8 +79,6 @@ public class JCSTestSuite implements Test {
                 TestToHostMapping.get().testDeployed((Test) test);
 
             } else {
-                System.out.println("JCSTestSuite.createTest() -> " + theClass
-                        + " is a regular test case, proceed normally");
                 if (constructor.getParameterTypes().length == 0) {
                     test = constructor.newInstance(new Object[0]);
                     if (test instanceof TestCase) {
@@ -218,20 +214,14 @@ public class JCSTestSuite implements Test {
      *            {@link TestCase}s
      */
     public JCSTestSuite(Class<?>... classes) {
-        System.out.println("JCSTestSuite.JCSTestSuite() " + classes);
         for (Class<?> each : classes) {
             addTest(testCaseForClass(each));
         }
     }
 
     private Test testCaseForClass(Class<?> each) {
-        System.out.println("JCSTestSuite.testCaseForClass() " + each);
         if (TestCase.class.isAssignableFrom(each)) {
-            System.out.println("JCSTestSuite.testCaseForClass() Test Case");
-
-            return new JCSTestSuite(
-                    /* the actual test class is the subsclass */
-                    each.asSubclass(TestCase.class));
+            return new JCSTestSuite(each.asSubclass(TestCase.class));
         } else {
             return warning(
                     each.getCanonicalName() + " does not extend TestCase");
@@ -287,40 +277,26 @@ public class JCSTestSuite implements Test {
      * Runs the tests and collects their result in a TestResult.
      */
     public void run(final TestResult result) {
-        System.out.println("---- JCSTestSuite.run() ---- ");
-        // We run lazily !
+        // TODO Somehow output this which is crucial
+        // System.out.println("---- JCSTestSuite.run() ---- ");
 
-        // for (Test each : fTests) {
-        // System.out.println("JCSTestSuite.run() each " + each);
-        // if (result.shouldStop()) {
-        // break;
-        // }
-        // runTest(each, result);
-        // }
-        // Since at this point Tests might not be created with can process them
-        // as soon as they are created
-
-        // new code
+        /*
+         * The generation of tests classes as CO is blocking so we make it asyn.
+         * At this point however we might not have all the tests ready,
+         * therefore we wait for them and re-enqueue them on the fly
+         * 
+         */
         try {
             while (!tasks.isEmpty()) {
                 Future<Test> finishedTask = completionService.take();
                 tasks.remove(finishedTask);
-                // FIXME ConcurrentModificationException !
 
                 final Test test = finishedTask.get();
 
                 // Update shared structures
                 addTest(test);
 
-                System.out.println(
-                        "JCSTestSuite.run() New test Available for execution "
-                                + test);
-
-                // THIS SHALL BE CALLED BEFORE STARTING THE EXEUTION
-                // Run the test
-
-                System.out.println(
-                        "JCSTestSuite.run() Enqueue test for the execution using the scheduler");
+                // Creation, management and execution of tests are decoupled !
                 scheduler.schedule(new Runnable() {
 
                     @Override
@@ -339,16 +315,9 @@ public class JCSTestSuite implements Test {
                 tasks.poll().cancel(true);
             executorService.shutdownNow();
         }
-        System.out.println(
-                "==========================\n" + "Submitted all tests for \n"
-                        + "==========================\n");
 
         // At this point we need to wait for the tests to finish !
         scheduler.finished();
-
-        System.out.println("==========================\n"
-                + "Finished all tests for \n" + "==========================\n");
-
     }
 
     public void runTest(Test test, TestResult result) {
@@ -412,10 +381,7 @@ public class JCSTestSuite implements Test {
     // Limit execution to 1 for the moment
     private RunnerScheduler scheduler = new JCSParallelScheduler(null, 1);
 
-    //
     public void setScheduler(RunnerScheduler scheduler) {
-        System.out.println(
-                "JCSTestSuite.setScheduler() new scheduler " + scheduler);
         this.scheduler = scheduler;
     }
 
@@ -433,20 +399,12 @@ public class JCSTestSuite implements Test {
             }
             return;
         }
-        // names.add(name);
-        // addTest(createTest(theClass, name));
-
-        System.out.println(
-                "JCSTestSuite.addTestMethod() Enqueue test creation for "
-                        + theClass + "." + name);
+        // Enqueue the creation of test objects since this is blocking
         tasks.offer(//
                 completionService.submit(new Callable<Test>() {
 
                     @Override
                     public Test call() throws Exception {
-                        System.out.println(
-                                "JCSTestSuite.addTestMethod. Starting the creation of "
-                                        + theClass + "." + name);
                         names.add(name);
                         return createTest(theClass, name);
                     }

@@ -1,5 +1,6 @@
 package org.junit.experimental.cloud;
 
+import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
 import org.junit.experimental.cloud.scheduling.JCSParallelScheduler;
 import org.junit.runners.model.InitializationError;
 
@@ -10,6 +11,7 @@ import org.junit.runners.model.InitializationError;
  * @author gambi
  *
  */
+@Logged
 public class JCSParallelRunner extends JCSRunner {
 
     private final int threadsLimit;

@@ -77,11 +77,6 @@ public class SamplePolicy extends AbstractScalingPolicy {
      * @return
      */
     private boolean canDeployTest(ClientCloudObject test, IHostPool pool) {
-
-        // This is to avoid that others can change pool in the meanwhile
-        // System.out.println(
-        // "SamplePolicy.canDeployTest() " + Thread.currentThread());
-
         synchronized (hostsLock) {
 
             for (IHost host : pool.getHosts()) {
@@ -136,8 +131,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-        System.out.println(
-                "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
+        // System.out.println(
+        // "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
 
         /*
          * Block the thread until the conditions for its execution are
@@ -147,9 +142,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
             synchronized (TestToHostMapping.get().getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
-                        System.out.println("SamplePolicy.selectHost()"
-                                + Thread.currentThread()
-                                + " Waiting on TestLock for available slots.");
+                        // System.out.println("SamplePolicy.selectHost()"
+                        // + Thread.currentThread()
+                        // + " Waiting on TestLock for available slots.");
                         mapping.getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -236,8 +231,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
                 }
             }
         } else {
-            System.out.println("\n\t WARN SamplePolicy.selectHost() : "
-                    + cloudObject + " not a registered Test Object !");
+            // System.out.println("\n\t WARN SamplePolicy.selectHost() : "
+            // + cloudObject + " not a registered Test Object !");
             synchronized (hostsLock) {
                 return pickRandomOrStart(pool);
             }

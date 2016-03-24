@@ -5,6 +5,7 @@ import java.lang.reflect.Constructor;
 
 import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
 import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
+import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
@@ -13,6 +14,7 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
+@Logged
 public class JCSRunner extends BlockJUnit4ClassRunner {
 
     @Override
@@ -33,8 +35,6 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
 
         if (!method.getDeclaringClass()
                 .isAnnotationPresent(CloudObject.class)) {
-            System.out.println(
-                    "\n\n\n ***** JCSRunner.runChild() WARN no CO use regular implementation \n\n\n");
             super.runChild(method, notifier);
 
         } else {
@@ -43,39 +43,32 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
             if (isIgnored(method)) {
                 notifier.fireTestIgnored(description);
             } else {
-                // This might take time
-                // System.out.println("BlockJUnit4ClassRunner.runChild() -
-                // Create
-                // the CO for " + method + "START");
                 TestToHostMapping.get().testScheduled(description);
-                //
+                // This causes the creation of the test and its deployment. It's
+                // blocking and we need to capture this event for
+                // synchronization
                 Statement statement = methodBlock(method);
                 //
                 TestToHostMapping.get().testDeployed(description);
-                System.out.println("JCSRunner.runChild() - Create the CO for "
-                        + method + "DONE");
-
-                System.out.println("JCSRunner.runChild() - Execution of "
-                        + method + " on CO START");
-                // This remains stuf in the notification somehow
+                // ---
+                // This is where the just created CO is used as test
                 TestToHostMapping.get().testStarts(description);
 
                 runLeaf(statement, description, notifier);
 
-                // TODO NOTE THIS ONE !! We must do this here otherwise the
-                // notification crap will be delayed becuase the threas is
-                // rescheduled somehow in the Queue ! Or we need to keep it
-                // somewhere else !
+                /*
+                 * The JUnit listener machinery does not work as expected for
+                 * the parallel case: the tests will be notified as finished
+                 * only at the end of the execution of all the test methods that
+                 * belong in the same test class.
+                 */
                 TestToHostMapping.get().testFinishes(description);
-                System.out.println("JCSRunner.runChild() - Execution  of "
-                        + method + " on CO DONE");
-
             }
         }
     }
 
     /*
-     * TODO Ideally here there should be a nice way to decide if a test
+     * Ideally here there should be a nice way to decide if a test
      * can/shall/must be executed on the cloud or not. For the moment, we rely
      * on testers and annotations. Note that ideally annotations can be placed
      * on methods as well and not only on the class.
@@ -83,16 +76,22 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
     @SuppressWarnings("rawtypes")
     @Override
     protected Object createTest() throws Exception {
-        // System.out.println("JCSRunner.createTest() " + getTestClass());
+        // This is a test class so let remember it !
+        TestToHostMapping.get()
+                .registerTestClass(getTestClass().getJavaClass());
+        // TODO Check also methods of the test class that are annotated with
+        // @Cloud.
+        // TODO If/when @CloudObject is not necessary anymore, we can change
+        // this to something else
         for (Annotation annotation : getTestClass().getAnnotations()) {
             if (annotation.annotationType().equals(CloudObject.class)) {
                 Constructor c = getTestClass().getOnlyConstructor();
                 Class clazz = getTestClass().getJavaClass();
-                // This triggers the whole JCS Machinery
-                // This is a key point. We shall register this specific clazz as
-                // test class so we trace its execution later
-                TestToHostMapping.get().registerTestClass(clazz);
-                // THIS CALL IS BLOCKING !!
+
+                /*
+                 * Note: since we use Sample policy that must decide where to
+                 * place the test THIS CALL IS BLOCKING !!
+                 */
                 return CloudObjects.create(c, clazz);
             }
         }

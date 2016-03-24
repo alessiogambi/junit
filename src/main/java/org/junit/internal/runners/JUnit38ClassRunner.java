@@ -188,7 +188,6 @@ public class JUnit38ClassRunner extends Runner implements Filterable, Sortable {
     }
 
     public void setScheduler(RunnerScheduler scheduler) {
-        System.out.println("JUnit38ClassRunner.setScheduler()");
         if (test instanceof JCSTestSuite) {
             ((JCSTestSuite) test).setScheduler(scheduler);
         }

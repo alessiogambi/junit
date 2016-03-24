@@ -8,14 +8,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
+import at.ac.tuwien.infosys.jcloudscale.configuration.JCloudScaleConfiguration;
+import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
 import at.ac.tuwien.infosys.jcloudscale.management.CloudManager;
 import at.ac.tuwien.infosys.jcloudscale.vm.ClientCloudObject;
 import at.ac.tuwien.infosys.jcloudscale.vm.IHost;
 import org.junit.internal.runners.statements.InvokeMethod;
 import org.junit.runner.Description;
 
-// TODO Check thread safety !
+@Logged
 public class TestToHostMapping {
 
     private static final String SCHEDULED = "SCHEDULED";
@@ -49,27 +52,28 @@ public class TestToHostMapping {
 
     private Map<ClientCloudObject, String> testObjectsToStatuMapping = new ConcurrentHashMap<ClientCloudObject, String>();
 
-    private TestToHostMapping() {
+    // Note this one, we always are after JCS is configured !
+    private final Logger log;
 
+    private TestToHostMapping() {
+        log = JCloudScaleConfiguration.getLogger(getClass().getName());
     }
 
     private synchronized void updateTestObjectByDescription(
             Description description, String status) {
 
         if (SCHEDULED.equals(status)) {
-            System.out.println("\t\t\t" + description.getClassName() + " "
-                    + description.getDisplayName() + " "
-                    + description.getMethodName() + " Test: no CO yet "
-                    + "null/initial --> " + status);
+            log.fine(description.getClassName() + "."
+                    + description.getMethodName() + " initial --> " + status);
             return;
         } else if (DEPLOYED.equals(status)) {
-            System.out.println("\t\t\t" + description.getClassName() + " "
-                    + description.getDisplayName() + " "
-                    + description.getMethodName() + " Test: no CO yet "
-                    + SCHEDULED + " --> " + status);
+            log.fine(description.getClassName() + "."
+                    + description.getMethodName() + " " + SCHEDULED + "--> "
+                    + status);
             return;
         }
 
+        // Is this really necessary ?!
         if (description.getStatement() instanceof InvokeMethod) {
 
             Object proxyObject = ((InvokeMethod) description.getStatement())
@@ -83,10 +87,9 @@ public class TestToHostMapping {
                     status);
 
             // For Deployed this should be aready deployed !
-            System.out.println("\t\t\t" + description.getClassName() + " "
-                    + description.getDisplayName() + " "
-                    + description.getMethodName() + " Test: " + cloudObject
-                    + " " + previousState + " --> " + status);
+            log.fine(description.getClassName() + "."
+                    + description.getMethodName() + " " + previousState + "--> "
+                    + status);
 
             // Update the count
             IHost host = testToHostMapping.get(cloudObject);
@@ -102,8 +105,7 @@ public class TestToHostMapping {
                         ? deployedTestOnHostMapping.get(host) : null;
 
             } catch (NullPointerException npe) {
-                npe.printStackTrace();
-                System.err.println(
+                log.severe(
                         "TestToHostMapping.updateTestObjectByDescription() DUMP:\n"
                                 + "HOST IS " + host + " For "
                                 + description.getMethodName() + " Cloud Object "
@@ -171,18 +173,16 @@ public class TestToHostMapping {
     }
 
     // JUnit 3 Compatibility
-
+    // TODO Duplicate code, this is the same as the other update but with direct
+    // access to CO. Note that some of those functionalities are redudant and
+    // probably can be implemented by using the new logger of JCS
     private synchronized void updateTestObject(Object test, String status) {
 
-        System.out.println("TestToHostMapping.updateTestObject() " + test);
-
         if (SCHEDULED.equals(status)) {
-            System.out.println("\t\t\t" + test + " Test: no CO yet "
-                    + "null/initial --> " + status);
+            log.fine(test + " initial --> " + status);
             return;
         } else if (DEPLOYED.equals(status)) {
-            System.out.println(
-                    "\t\t\t" + test + " " + SCHEDULED + " --> " + status);
+            log.fine(test + " " + SCHEDULED + " --> " + status);
             return;
         }
 
@@ -197,8 +197,7 @@ public class TestToHostMapping {
                 status);
 
         // For Deployed this should be aready deployed !
-        System.out.println("\t\t\t" + test + " Test: " + cloudObject + " "
-                + previousState + " --> " + status);
+        log.fine(test + " " + previousState + " --> " + status);
 
         // Update the count
         IHost host = testToHostMapping.get(cloudObject);
@@ -214,8 +213,7 @@ public class TestToHostMapping {
                     ? deployedTestOnHostMapping.get(host) : null;
 
         } catch (NullPointerException npe) {
-            npe.printStackTrace();
-            System.err.println(
+            log.severe(
                     "TestToHostMapping.updateTestObjectByDescription() DUMP:\n"
                             + "HOST IS " + host + " For " + test
                             + " Cloud Object " + cloudObject
@@ -266,25 +264,20 @@ public class TestToHostMapping {
 
     public void testFinishes(Object test) {
         updateTestObject(test, FINISHED);
-        //
-        //
-        System.out.println(
-                "TestToHostMapping.testFinishes(). Notify waiting threads");
 
+        log.finest("Wake up waiting threads on TestsLock");
         synchronized (getTestsLock()) {
             getTestsLock().notifyAll();
         }
     }
 
     public void registerHost(IHost host) {
-        System.out.println("TestToHostMapping.registerHost() " + host);
         hostToTestMapping.put(host, new HashSet<ClientCloudObject>());
         runningTestOnHostMapping.put(host, new AtomicInteger());
         deployedTestOnHostMapping.put(host, new AtomicInteger());
     }
 
     public void deregisterHost(IHost host) {
-        System.out.println("TestToHostMapping.deregisterHost() " + host);
         hostToTestMapping.remove(host);
         runningTestOnHostMapping.remove(host);
         deployedTestOnHostMapping.remove(host);
@@ -300,9 +293,10 @@ public class TestToHostMapping {
     public void deployTestObjectToHost(IHost selectedHost,
             ClientCloudObject cloudObject) {
 
-        System.out.println("TestToHostMapping.deployTestObjectToHost() \n"
-                + Thread.currentThread() + " Register " + cloudObject + " to "
-                + selectedHost + " " + hostToTestMapping.get(selectedHost));
+        log.fine("deployTestObjectToHost() \n" + Thread.currentThread()
+                + " Register " + cloudObject + " to " + selectedHost + " "
+                + hostToTestMapping.get(selectedHost));
+        //
         hostToTestMapping.get(selectedHost).add(cloudObject);
         testToHostMapping.put(cloudObject, selectedHost);
         // This create the entry to host the status. and
@@ -330,10 +324,14 @@ public class TestToHostMapping {
                 ? deployedTestOnHostMapping.get(host).get() : 0;
     }
 
-    public void registerTestClass(Class clazz) {
+    /**
+     * Unregistered classes are managed as plain CO therefore no specific
+     * constraints on their behavior will be enforced
+     * 
+     * @param clazz
+     */
+    public void registerTestClass(Class<?> clazz) {
         synchronized (testClasses) {
-            // System.out
-            // .println("TestToHostMapping.registerTestClass() " + clazz);
             testClasses.add(clazz);
         }
 
@@ -351,7 +349,6 @@ public class TestToHostMapping {
         return testLock;
     }
 
-    // Synch on what ?!
     public synchronized int countRunningTestsOfTypeForHost(
             Class<?> cloudObjectClass, IHost host) {
         int count = 0;

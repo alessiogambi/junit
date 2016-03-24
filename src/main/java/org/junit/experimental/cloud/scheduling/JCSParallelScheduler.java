@@ -10,7 +10,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
+import at.ac.tuwien.infosys.jcloudscale.vm.JCloudScaleClient;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.runners.model.RunnerScheduler;
 
@@ -42,9 +44,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private final Semaphore testsSemaphore;
 
-    private final String factoryName;
+    private final Logger log;
 
-    private final boolean wrappingSuite;
+    private final String factoryName;
 
     /**
      * Since threads limit here enforces test limit we can also use one
@@ -59,13 +61,17 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     public JCSParallelScheduler(Class<?> klass, int testLimit,
             int threadLimit) {
+        this(klass != null ? klass.getSimpleName()
+                : "Wrapping SUITE {" + testLimit + ", " + threadLimit + "}",
+                testLimit, threadLimit);
+    }
 
-        wrappingSuite = klass == null;
+    public JCSParallelScheduler(String factoryName, int testLimit,
+            int threadLimit) {
 
-        factoryName = wrappingSuite
-                ? "Wrapping SUITE {concurrent.test.cases=" + testLimit
-                        + ",concurrent.threads=" + threadLimit + "}"
-                : klass.getSimpleName();
+        this.factoryName = factoryName;
+
+        log = JCloudScaleClient.getConfiguration().getLogger(getClass());
 
         // TODO Change this if you want to control the scheduling order, e.g.,
         // with priority or stuff
@@ -91,17 +97,12 @@ public class JCSParallelScheduler implements RunnerScheduler {
          */
         tasks = new LinkedList<Future<Void>>();
 
-        // TODO - Limit the amount of tests concurrently "processed"
-        // to the framework. This can be used to enforce a GLOBAL parallelism
-        // level, not sure if needed really
-
         // Note that threads are generated before and for all the tests
         testsSemaphore = new Semaphore(
                 testLimit > 0 ? testLimit : Integer.MAX_VALUE);
 
-        // System.out.println("JCSParallelScheduler.JCSParallelScheduler()\n"
-        // + "\tSUMMARY\n" + "\t\t " + testLimit + " using " + threadLimit
-        // + " threads");
+        log.fine(factoryName + " configuration :\n" + "\tMax concurrency: "
+                + testLimit + "\n" + "\tMax threads: " + threadLimit);
 
     }
 
@@ -119,9 +120,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
          * concurrency management. Here I guess is the place were to enforce any
          * specific ordering (or reordering of elements)
          */
-        // System.out.println(Thread.currentThread() + "Submit " +
-        // childStatement
-        // + " for execution");
+        log.fine(Thread.currentThread() + " enqueue " + childStatement
+                + " for execution");
         tasks.offer(completionService.submit(new Runnable() {
             @Override
             public void run() {
@@ -147,9 +147,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     @Override
     public void finished() {
-        // System.out.println("==========================\n"
-        // + "Finished submission of all tests for " + factoryName + "\n"
-        // + "Wait for tests to end\n" + "==========================\n");
+        log.fine(Thread.currentThread()
+                + "Finished submission of all tests for " + factoryName);
+        //
         try {
             while (!tasks.isEmpty()) {
                 Future<Void> finishedTask = completionService.take();
@@ -157,6 +157,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
                 tasks.remove(finishedTask);
 
                 synchronized (TestToHostMapping.get().getTestsLock()) {
+                    // TODO Not this one. Not sure that it is reallly needed ?
                     TestToHostMapping.get().getTestsLock().notifyAll();
                 }
             }
@@ -167,9 +168,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
                 tasks.poll().cancel(true);
             executorService.shutdownNow();
         }
-        // System.out.println(
-        // "==========================\n" + "Finished all tests for "
-        // + factoryName + "\n" + "==========================\n");
+        log.fine(Thread.currentThread() + "Finished all tests for "
+                + factoryName);
 
     }
 

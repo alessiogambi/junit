@@ -391,7 +391,7 @@ public abstract class ParentRunner<T> extends Runner
 
         try {
             // At this point the CO SHould be already there
-            System.out.println("ParentRunner.runLeaf() start " + description);
+//            System.out.println("ParentRunner.runLeaf() start " + description);
 //            TestToHostMapping.get().testStarts(description);
             //
             eachNotifier.fireTestStarted();
@@ -399,7 +399,7 @@ public abstract class ParentRunner<T> extends Runner
             // the execution
             statement.evaluate(); // inside the statement we need to fire start/end
 
-            System.out.println("ParentRunner.runLeaf() done " + description);
+//            System.out.println("ParentRunner.runLeaf() done " + description);
         } catch (AssumptionViolatedException e) {
             e.printStackTrace();
             eachNotifier.addFailedAssumption(e);
