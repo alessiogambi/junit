@@ -12,7 +12,8 @@ public class RunBefores extends Statement {
 
     private final List<FrameworkMethod> befores;
 
-    public RunBefores(Statement next, List<FrameworkMethod> befores, Object target) {
+    public RunBefores(Statement next, List<FrameworkMethod> befores,
+            Object target) {
         this.next = next;
         this.befores = befores;
         this.target = target;
@@ -24,5 +25,10 @@ public class RunBefores extends Statement {
             before.invokeExplosively(target);
         }
         next.evaluate();
+    }
+
+    @Override
+    public Object getTarget() {
+        return target;
     }
 }

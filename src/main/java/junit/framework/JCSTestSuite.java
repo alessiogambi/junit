@@ -53,41 +53,44 @@ public class JCSTestSuite implements Test {
         Object test;
         try {
             if (theClass.isAnnotationPresent(CloudObject.class)) {
-
-                TestToHostMapping.get().testScheduled(theClass);
-
-                if (constructor.getParameterTypes().length == 0) {
-
-                    // Probably null would work just fine
-                    test = CloudObjects.create(constructor, theClass,
-                            new Object[0]);
-
-                    // At this point we should already have the sample policy
-                    // deploying our stuff !
-
-                    // test = constructor.newInstance(new Object[0]);
-                    if (test instanceof TestCase) {
-                        ((TestCase) test).setName(name);
-                    }
-                } else {
-                    // TODO Not sure if this will result in an error !
-                    test = CloudObjects.create(constructor, theClass,
-                            new Object[] { name });
-                    // test = constructor.newInstance(new Object[] { name });
-                }
-
-                TestToHostMapping.get().testDeployed((Test) test);
-
-            } else {
-                if (constructor.getParameterTypes().length == 0) {
-                    test = constructor.newInstance(new Object[0]);
-                    if (test instanceof TestCase) {
-                        ((TestCase) test).setName(name);
-                    }
-                } else {
-                    test = constructor.newInstance(new Object[] { name });
-                }
+                System.out.println(
+                        "JCSTestSuite.createTest() WARNING THIS IS UNDER DEVELOPMENT !!!");
             }
+
+            // TestToHostMapping.get().testScheduled(theClass);
+            //
+            // if (constructor.getParameterTypes().length == 0) {
+            //
+            // // Probably null would work just fine
+            // test = CloudObjects.create(constructor, theClass,
+            // new Object[0]);
+            //
+            // // At this point we should already have the sample policy
+            // // deploying our stuff !
+            //
+            // // test = constructor.newInstance(new Object[0]);
+            // if (test instanceof TestCase) {
+            // ((TestCase) test).setName(name);
+            // }
+            // } else {
+            // // TODO Not sure if this will result in an error !
+            // test = CloudObjects.create(constructor, theClass,
+            // new Object[] { name });
+            // // test = constructor.newInstance(new Object[] { name });
+            // }
+            //
+            // TestToHostMapping.get().testDeployed((Test) test);
+            //
+            // } else {
+            if (constructor.getParameterTypes().length == 0) {
+                test = constructor.newInstance(new Object[0]);
+                if (test instanceof TestCase) {
+                    ((TestCase) test).setName(name);
+                }
+            } else {
+                test = constructor.newInstance(new Object[] { name });
+            }
+            // }
 
         } catch (InstantiationException e) {
             return (warning("Cannot instantiate test case: " + name + " ("
@@ -322,10 +325,13 @@ public class JCSTestSuite implements Test {
 
     public void runTest(Test test, TestResult result) {
         try {
-            TestToHostMapping.get().testStarts(test);
+            // TODO
+            System.out.println(
+                    "JCSTestSuite.runTest() WARNING THIS IS UNDER DEVELOPMENT !");
+            // TestToHostMapping.get().testStarts(test);
             test.run(result);
         } finally {
-            TestToHostMapping.get().testFinishes(test);
+            // TestToHostMapping.get().testFinishes(test);
         }
     }
 

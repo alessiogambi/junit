@@ -131,8 +131,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-        // System.out.println(
-        // "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
+        System.out.println(
+                "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
 
         /*
          * Block the thread until the conditions for its execution are
@@ -193,8 +193,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
                         if (maxConcurrentTestMethodsPerHostOk
                                 && maxConcurrentTestsPerHostOk) {
 
-                            // System.out.println(
-                            // "SamplePolicy.selectHost() Deploy");
+                            System.out.println(
+                                    "SamplePolicy.selectHost() Deploy");
                             mapping.deployTestObjectToHost(host, cloudObject);
                             // System.out.println(
                             // "SamplePolicy.selectHost() Deploy DONE ");

@@ -19,7 +19,7 @@ public class InvokeMethod extends Statement {
         testMethod.invokeExplosively(target);
     }
 
-    // PATCH
+    @Override
     public Object getTarget() {
         return target;
     }

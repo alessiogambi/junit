@@ -3,6 +3,7 @@ package org.junit.experimental.cloud.scheduling;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,7 +45,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     private final Semaphore testsSemaphore;
 
-    private final Logger log;
+    // private final Logger log;
 
     private final String factoryName;
 
@@ -56,7 +57,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
      * @param hardLimit
      */
     public JCSParallelScheduler(Class<?> klass, int hardLimit) {
-        this(klass, hardLimit, hardLimit);
+        this(klass, hardLimit, -1);// hardLimit);
     }
 
     public JCSParallelScheduler(Class<?> klass, int testLimit,
@@ -71,7 +72,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
         this.factoryName = factoryName;
 
-        log = JCloudScaleClient.getConfiguration().getLogger(getClass());
+        // log = JCloudScaleClient.getConfiguration().getLogger(getClass());
 
         // TODO Change this if you want to control the scheduling order, e.g.,
         // with priority or stuff
@@ -101,7 +102,7 @@ public class JCSParallelScheduler implements RunnerScheduler {
         testsSemaphore = new Semaphore(
                 testLimit > 0 ? testLimit : Integer.MAX_VALUE);
 
-        log.fine(factoryName + " configuration :\n" + "\tMax concurrency: "
+        System.out.println(factoryName + " configuration :\n" + "\tMax concurrency: "
                 + testLimit + "\n" + "\tMax threads: " + threadLimit);
 
     }
@@ -120,25 +121,25 @@ public class JCSParallelScheduler implements RunnerScheduler {
          * concurrency management. Here I guess is the place were to enforce any
          * specific ordering (or reordering of elements)
          */
-        log.fine(Thread.currentThread() + " enqueue " + childStatement
+        System.out.println(Thread.currentThread() + " enqueue " + childStatement
                 + " for execution");
         tasks.offer(completionService.submit(new Runnable() {
             @Override
             public void run() {
                 try {
 
-                    // System.out.println(Thread.currentThread() + " "
-                    // + childStatement + " start execution " + " using "
-                    // + testsSemaphore);
+                    System.out.println(Thread.currentThread() + " "
+                            + childStatement + " start execution " + " using "
+                            + testsSemaphore);
                     testsSemaphore.acquire();
-                    // Execute
+                    // Create Test Object and then Execute ?
                     childStatement.run();
                 } catch (InterruptedException e) {
                     System.err.println(Thread.currentThread() + " INTERRUPTED");
                 } finally {
-                    // System.out.println(Thread.currentThread()
-                    // + " release permit from semaphore " + testsSemaphore
-                    // + "{" + testsSemaphore.availablePermits() + "}");
+                    System.out.println(Thread.currentThread()
+                            + " release permit from semaphore " + testsSemaphore
+                            + "{" + testsSemaphore.availablePermits() + "}");
                     testsSemaphore.release();
                 }
             }
@@ -147,29 +148,44 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     @Override
     public void finished() {
-        log.fine(Thread.currentThread()
+        System.out.println(Thread.currentThread()
                 + "Finished submission of all tests for " + factoryName);
         //
         try {
             while (!tasks.isEmpty()) {
-                Future<Void> finishedTask = completionService.take();
+                try {
+                    Future<Void> finishedTask = completionService.take();
+                    tasks.remove(finishedTask);
 
-                tasks.remove(finishedTask);
+                    System.out.println(
+                            "JCSParallelScheduler.finished() Done a task");
 
-                synchronized (TestToHostMapping.get().getTestsLock()) {
-                    // TODO Not this one. Not sure that it is reallly needed ?
-                    TestToHostMapping.get().getTestsLock().notifyAll();
+                    finishedTask.get();
+                } catch (ExecutionException e) {
+                    // This is an exception raised during the execution
+                    e.printStackTrace();
+                } finally {
+                    synchronized (TestToHostMapping.get().getTestsLock()) {
+                        TestToHostMapping.get().getTestsLock().notifyAll();
+                    }
                 }
+
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            synchronized (TestToHostMapping.get().getTestsLock()) {
+                TestToHostMapping.get().getTestsLock().notifyAll();
+            }
         } finally {
             while (!tasks.isEmpty())
                 tasks.poll().cancel(true);
             executorService.shutdownNow();
         }
-        log.fine(Thread.currentThread() + "Finished all tests for "
+        System.out.println(Thread.currentThread() + "Finished all tests for "
                 + factoryName);
+        synchronized (TestToHostMapping.get().getTestsLock()) {
+            TestToHostMapping.get().getTestsLock().notifyAll();
+        }
 
     }
 

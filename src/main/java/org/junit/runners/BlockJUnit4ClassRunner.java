@@ -3,7 +3,9 @@ package org.junit.runners;
 import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_METHOD_VALIDATOR;
 import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_VALIDATOR;
 
+import java.util.AbstractMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -78,7 +80,7 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
         if (isIgnored(method)) {
             notifier.fireTestIgnored(description);
         } else {
-            runLeaf(methodBlock(method), description, notifier);
+            runLeaf(methodBlock(method).getKey(), description, notifier);
         }
     }
 
@@ -261,7 +263,7 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
      * This can be overridden in subclasses, either by overriding this method,
      * or the implementations creating each sub-statement.
      */
-    protected Statement methodBlock(FrameworkMethod method) {
+    protected Map.Entry<Statement, Object> methodBlock(FrameworkMethod method) {
         Object test;
         try {
 
@@ -283,7 +285,7 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
             // created. Status must be DEPLOYED !");
 
         } catch (Throwable e) {
-            return new Fail(e);
+            return new AbstractMap.SimpleEntry(new Fail(e), null);
         }
 
         Statement statement = methodInvoker(method, test);
@@ -292,7 +294,8 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
         statement = withBefores(method, test, statement);
         statement = withAfters(method, test, statement);
         statement = withRules(method, test, statement);
-        return statement;
+        //
+        return new AbstractMap.SimpleEntry(statement, test);
     }
 
     //

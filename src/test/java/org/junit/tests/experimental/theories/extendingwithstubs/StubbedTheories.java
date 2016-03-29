@@ -1,8 +1,9 @@
 package org.junit.tests.experimental.theories.extendingwithstubs;
 
-
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.junit.experimental.theories.ParameterSignature;
 import org.junit.experimental.theories.Theories;
@@ -19,19 +20,22 @@ public class StubbedTheories extends Theories {
     }
 
     @Override
-    public Statement methodBlock(FrameworkMethod method) {
-        return new StubbedTheoryAnchor(method, getTestClass());
+    public Entry<Statement, Object> methodBlock(FrameworkMethod method) {
+        return new AbstractMap.SimpleEntry(
+                new StubbedTheoryAnchor(method, getTestClass()), null);
     }
 
     public static class StubbedTheoryAnchor extends TheoryAnchor {
-        public StubbedTheoryAnchor(FrameworkMethod method, TestClass testClass) {
+        public StubbedTheoryAnchor(FrameworkMethod method,
+                TestClass testClass) {
             super(method, testClass);
         }
 
         private List<GuesserQueue> queues = new ArrayList<GuesserQueue>();
 
         @Override
-        protected void handleAssumptionViolation(AssumptionViolatedException e) {
+        protected void handleAssumptionViolation(
+                AssumptionViolatedException e) {
             super.handleAssumptionViolation(e);
             for (GuesserQueue queue : queues) {
                 queue.update(e);
@@ -58,7 +62,8 @@ public class StubbedTheories extends Theories {
                 return queue;
             }
 
-            return GuesserQueue.forSingleValues(incomplete.potentialsForNextUnassigned());
+            return GuesserQueue
+                    .forSingleValues(incomplete.potentialsForNextUnassigned());
         }
     }
 

@@ -2,10 +2,10 @@ package org.junit.experimental.cloud;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.util.Map;
 
 import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
 import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
-import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
@@ -14,7 +14,7 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
-@Logged
+//@Logged
 public class JCSRunner extends BlockJUnit4ClassRunner {
 
     @Override
@@ -35,6 +35,8 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
 
         if (!method.getDeclaringClass()
                 .isAnnotationPresent(CloudObject.class)) {
+            System.out.println(Thread.currentThread()
+                    + " JCSRunner.runChild() NOT A CLOUD OBJECT !");
             super.runChild(method, notifier);
 
         } else {
@@ -42,27 +44,43 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
             Description description = describeChild(method);
             if (isIgnored(method)) {
                 notifier.fireTestIgnored(description);
+                System.out.println(Thread.currentThread()
+                        + " JCSRunner.runChild() IGNORED ");
             } else {
-                TestToHostMapping.get().testScheduled(description);
-                // This causes the creation of the test and its deployment. It's
-                // blocking and we need to capture this event for
-                // synchronization
-                Statement statement = methodBlock(method);
-                //
-                TestToHostMapping.get().testDeployed(description);
-                // ---
-                // This is where the just created CO is used as test
-                TestToHostMapping.get().testStarts(description);
+                try {
+                    // Update test status
+                    TestToHostMapping.get().testScheduled(description);
 
-                runLeaf(statement, description, notifier);
+                    // This is were scheduling and deployment happens, see
+                    // createTest
+                    Map.Entry<Statement, Object> statementMap = methodBlock(
+                            method);
 
-                /*
-                 * The JUnit listener machinery does not work as expected for
-                 * the parallel case: the tests will be notified as finished
-                 * only at the end of the execution of all the test methods that
-                 * belong in the same test class.
-                 */
-                TestToHostMapping.get().testFinishes(description);
+                    // Update test status and register the proxyObject
+                    TestToHostMapping.get().testDeployed(description,
+                            statementMap.getValue());
+
+                    // ---
+                    System.out.println("\n\n\n----------------------------- "
+                            + Thread.currentThread()
+                            + " JCSRunner.runChild() start " + description
+                            + "-----------------------------\n\n\n");
+
+                    // This is where the just created CO is used as test
+                    TestToHostMapping.get().testStarts(description);
+
+                    runLeaf(statementMap.getKey(), description, notifier);
+
+                    /*
+                     * The JUnit listener machinery does not work as expected
+                     * for the parallel case: the tests will be notified as
+                     * finished only at the end of the execution of all the test
+                     * methods that belong in the same test class.
+                     */
+                } finally {
+                    // If something goes wrong free the resources nevertheless !
+                    TestToHostMapping.get().testFinishes(description);
+                }
             }
         }
     }
@@ -76,9 +94,12 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
     @SuppressWarnings("rawtypes")
     @Override
     protected Object createTest() throws Exception {
+
         // This is a test class so let remember it !
-        TestToHostMapping.get()
-                .registerTestClass(getTestClass().getJavaClass());
+        // This must be already regitered
+        // TestToHostMapping.get()
+        // .registerTestClass(getTestClass().getJavaClass());
+
         // TODO Check also methods of the test class that are annotated with
         // @Cloud.
         // TODO If/when @CloudObject is not necessary anymore, we can change
