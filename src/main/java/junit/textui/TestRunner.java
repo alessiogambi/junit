@@ -1,6 +1,5 @@
 package junit.textui;
 
-
 import java.io.PrintStream;
 
 import junit.framework.Test;
@@ -12,26 +11,29 @@ import junit.runner.Version;
 
 /**
  * A command line based tool to run tests.
+ * 
  * <pre>
  * java junit.textui.TestRunner [-wait] TestCaseClass
  * </pre>
  * <p>
- * TestRunner expects the name of a TestCase class as argument.
- * If this class defines a static <code>suite</code> method it
- * will be invoked and the returned test is run. Otherwise all
- * the methods starting with "test" having no arguments are run.
+ * TestRunner expects the name of a TestCase class as argument. If this class
+ * defines a static <code>suite</code> method it will be invoked and the
+ * returned test is run. Otherwise all the methods starting with "test" having
+ * no arguments are run.
  * <p>
- * When the wait command line argument is given TestRunner
- * waits until the users types RETURN.
+ * When the wait command line argument is given TestRunner waits until the users
+ * types RETURN.
  * <p>
- * TestRunner prints a trace as the tests are executed followed by a
- * summary at the end.
+ * TestRunner prints a trace as the tests are executed followed by a summary at
+ * the end.
  */
 public class TestRunner extends BaseTestRunner {
     private ResultPrinter fPrinter;
 
     public static final int SUCCESS_EXIT = 0;
+
     public static final int FAILURE_EXIT = 1;
+
     public static final int EXCEPTION_EXIT = 2;
 
     /**
@@ -63,12 +65,12 @@ public class TestRunner extends BaseTestRunner {
     }
 
     /**
-     * Runs a single test and collects its results.
-     * This method can be used to start a test run
-     * from your program.
+     * Runs a single test and collects its results. This method can be used to
+     * start a test run from your program.
+     * 
      * <pre>
-     * public static void main (String[] args) {
-     *    test.textui.TestRunner.run(suite());
+     * public static void main(String[] args) {
+     *     test.textui.TestRunner.run(suite());
      * }
      * </pre>
      */
@@ -78,8 +80,7 @@ public class TestRunner extends BaseTestRunner {
     }
 
     /**
-     * Runs a single test and waits until the user
-     * types RETURN.
+     * Runs a single test and waits until the user types RETURN.
      */
     static public void runAndWait(Test suite) {
         TestRunner aTestRunner = new TestRunner();
@@ -123,7 +124,8 @@ public class TestRunner extends BaseTestRunner {
     }
 
     protected void pause(boolean wait) {
-        if (!wait) return;
+        if (!wait)
+            return;
         fPrinter.printWaitPrompt();
         try {
             System.in.read();
@@ -165,14 +167,16 @@ public class TestRunner extends BaseTestRunner {
                 testCase = arg.substring(0, lastIndex);
                 method = arg.substring(lastIndex + 1);
             } else if (args[i].equals("-v")) {
-                System.err.println("JUnit " + Version.id() + " by Kent Beck and Erich Gamma");
+                System.err.println("JUnit " + Version.id()
+                        + " by Kent Beck and Erich Gamma");
             } else {
                 testCase = args[i];
             }
         }
 
         if (testCase.equals("")) {
-            throw new Exception("Usage: TestRunner [-wait] testCaseName, where name is the name of the TestCase class");
+            throw new Exception(
+                    "Usage: TestRunner [-wait] testCaseName, where name is the name of the TestCase class");
         }
 
         try {
@@ -186,9 +190,11 @@ public class TestRunner extends BaseTestRunner {
         }
     }
 
-    protected TestResult runSingleMethod(String testCase, String method, boolean wait) throws Exception {
-        Class<? extends TestCase> testClass = loadSuiteClass(testCase).asSubclass(TestCase.class);
-        Test test = JCSTestSuite.createTest(testClass, method);
+    protected TestResult runSingleMethod(String testCase, String method,
+            boolean wait) throws Exception {
+        Class<? extends TestCase> testClass = loadSuiteClass(testCase)
+                .asSubclass(TestCase.class);
+        Test test = JCSTestSuite.createTest(testClass, method).getKey();
         return doRun(test, wait);
     }
 
@@ -201,6 +207,5 @@ public class TestRunner extends BaseTestRunner {
     public void setPrinter(ResultPrinter printer) {
         fPrinter = printer;
     }
-
 
 }

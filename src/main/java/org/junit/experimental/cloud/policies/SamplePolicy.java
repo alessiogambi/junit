@@ -107,6 +107,7 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     continue;
                 }
                 // here both are true
+                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() Can deploy test " + test);
                 return true;
             }
 
@@ -120,8 +121,11 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     || (maxHosts >= 1 && pool.getHostsCount() < maxHosts)) {
                 IHost host = pool.startNewHost();
                 mapping.registerHost(host);
+                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() new host ! Can deploy test " + test);
                 return true;
             } else {
+                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() Cannot deploy test "
+                                + test);
                 return false;
             }
         }
@@ -131,20 +135,19 @@ public class SamplePolicy extends AbstractScalingPolicy {
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-        System.out.println(
-                "\n\t SamplePolicy.selectHost() selectHost " + cloudObject);
+        System.out.println( Thread.currentThread() + " SamplePolicy.selectHost() selecting host for" + cloudObject);
 
         /*
          * Block the thread until the conditions for its execution are
          * satisfied, but only if it carries a Test
          */
         if (mapping.isTestClass(cloudObject.getCloudObjectClass())) {
-            synchronized (TestToHostMapping.get().getTestsLock()) {
+            synchronized (mapping.getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
-                        // System.out.println("SamplePolicy.selectHost()"
-                        // + Thread.currentThread()
-                        // + " Waiting on TestLock for available slots.");
+                        System.out.println("SamplePolicy.selectHost()"
+                                + Thread.currentThread()
+                                + " Waiting on TestLock for available slots.");
                         mapping.getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -193,8 +196,8 @@ public class SamplePolicy extends AbstractScalingPolicy {
                         if (maxConcurrentTestMethodsPerHostOk
                                 && maxConcurrentTestsPerHostOk) {
 
-                            System.out.println(
-                                    "SamplePolicy.selectHost() Deploy");
+                            // System.out.println(
+                            // "SamplePolicy.selectHost() Deploy");
                             mapping.deployTestObjectToHost(host, cloudObject);
                             // System.out.println(
                             // "SamplePolicy.selectHost() Deploy DONE ");

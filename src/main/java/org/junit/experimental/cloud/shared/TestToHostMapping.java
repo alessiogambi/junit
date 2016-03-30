@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import at.ac.tuwien.infosys.jcloudscale.management.CloudManager;
 import at.ac.tuwien.infosys.jcloudscale.vm.ClientCloudObject;
 import at.ac.tuwien.infosys.jcloudscale.vm.IHost;
-import jnr.ffi.Struct.caddr_t;
 import org.junit.runner.Description;
 
 //@Logged
@@ -84,11 +83,12 @@ public class TestToHostMapping {
 
             cloudObject = CloudManager.getInstance()
                     .getClientCloudObject(proxyObject);
-            // This cannot be null
-            host = testToHostMapping.get(cloudObject);
-            //
-            deployedTests = deployedTestOnHostMapping.get(host)
-                    .incrementAndGet();
+            // // This cannot be null
+            // host = testToHostMapping.get(cloudObject);
+            // // NOTE: This increment must be done at the time the actual CO is
+            // // deployed otherwise for JUnit3 will be too late !
+            // deployedTests = deployedTestOnHostMapping.get(host)
+            // .incrementAndGet();
 
             System.out.println(
                     "TestToHostMapping.updateTests() Tests deployed on " + host
@@ -151,6 +151,10 @@ public class TestToHostMapping {
                 testToHostMapping.keySet().remove(cloudObject);
                 hostToTestMapping.get(host).remove(cloudObject);
                 //
+                System.out.println("Wake up waiting threads on TestsLock");
+                synchronized (getTestsLock()) {
+                    getTestsLock().notifyAll();
+                }
             } catch (Throwable e) {
                 e.printStackTrace();
                 throw e;
@@ -285,9 +289,6 @@ public class TestToHostMapping {
     // public void testFinishes(Object test) {
     // updateTestObject(test, FINISHED);
     //
-    // System.out.println("Wake up waiting threads on TestsLock");
-    // synchronized (getTestsLock()) {
-    // getTestsLock().notifyAll();
     // }
     // }
 
@@ -316,10 +317,17 @@ public class TestToHostMapping {
         hostToTestMapping.get(selectedHost).add(cloudObject);
         testToHostMapping.put(cloudObject, selectedHost);
 
-        System.out
-                .println("deployTestObjectToHost() \n" + Thread.currentThread()
-                        + " Deploy Test " + cloudObject + " to " + selectedHost
-                        + "==" + hostToTestMapping.get(selectedHost));
+        // This should increase the amount of tests deployed on the host !
+        // This cannot be null
+        int tot = deployedTestOnHostMapping.get(selectedHost).incrementAndGet();
+
+        System.out.println(Thread.currentThread() + " Deploy Test "
+                + cloudObject + " to " + selectedHost + "=="
+                + hostToTestMapping.get(selectedHost));
+        System.out.println(
+                Thread.currentThread() + " Total tests deployed on host "
+                        + selectedHost + " is " + tot);
+
     }
 
     // TODO Shall we synch ? not sure the behavior of
@@ -367,11 +375,11 @@ public class TestToHostMapping {
         return testLock;
     }
 
-    public synchronized int countRunningTestsOfTypeForHost(
-            Class<?> cloudObjectClass, IHost host) {
+    public synchronized int countRunningTestsOfTypeForHost(Class<?> testType,
+            IHost host) {
         int count = 0;
         for (ClientCloudObject cloudObject : getTestsForHost(host)) {
-            if (cloudObject.getCloudObjectClass().equals(cloudObjectClass)) {
+            if (cloudObject.getCloudObjectClass().equals(testType)) {
                 if (STARTED.equals(
                         descriptionToCloudObjectMapping.get(cloudObject)))
                     count++;
@@ -392,25 +400,5 @@ public class TestToHostMapping {
         }
         return count;
     }
-
-    // private int concurrentTestsLimit = -1;
-    //
-    // public void setConcurrentTestsLimit(int concurrentTestsLimit) {
-    // this.concurrentTestsLimit = concurrentTestsLimit;
-    // }
-    //
-    // public int getConcurrentTestsLimit() {
-    // return concurrentTestsLimit;
-    // }
-    //
-    // private int threadLimit = -1;
-    //
-    // public int getThreadLimit() {
-    // return threadLimit;
-    // }
-    //
-    // public void setThreadLimit(int threadLimit) {
-    // this.threadLimit = threadLimit;
-    // }
 
 }

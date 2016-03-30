@@ -78,7 +78,6 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
                      * methods that belong in the same test class.
                      */
                 } finally {
-                    // If something goes wrong free the resources nevertheless !
                     TestToHostMapping.get().testFinishes(description);
                 }
             }
@@ -95,15 +94,6 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
     @Override
     protected Object createTest() throws Exception {
 
-        // This is a test class so let remember it !
-        // This must be already regitered
-        // TestToHostMapping.get()
-        // .registerTestClass(getTestClass().getJavaClass());
-
-        // TODO Check also methods of the test class that are annotated with
-        // @Cloud.
-        // TODO If/when @CloudObject is not necessary anymore, we can change
-        // this to something else
         for (Annotation annotation : getTestClass().getAnnotations()) {
             if (annotation.annotationType().equals(CloudObject.class)) {
                 Constructor c = getTestClass().getOnlyConstructor();
