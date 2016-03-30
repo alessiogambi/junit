@@ -22,10 +22,15 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import at.ac.tuwien.infosys.jcloudscale.annotations.CloudObject;
 import at.ac.tuwien.infosys.jcloudscale.api.CloudObjects;
 import at.ac.tuwien.infosys.jcloudscale.logging.Logged;
+import at.ac.tuwien.infosys.jcloudscale.vm.ClientCloudObject;
+import at.ac.tuwien.infosys.jcloudscale.vm.IHost;
+import org.junit.experimental.cloud.LocalHost;
 import org.junit.experimental.cloud.scheduling.JCSParallelScheduler;
 import org.junit.experimental.cloud.shared.TestToHostMapping;
 import org.junit.internal.MethodSorter;
@@ -68,13 +73,13 @@ public class JCSTestSuite implements Test {
                     null);
         }
 
-        Object test;
+        Object test = null;
         Description description = Description.createTestDescription(theClass,
                 name, getAnnotations(theClass, name));
+        // Register lifecycle also for tests running on localhost !
+        TestToHostMapping.get().testScheduled(description);
         try {
             if (theClass.isAnnotationPresent(CloudObject.class)) {
-
-                TestToHostMapping.get().testScheduled(description);
 
                 // Not sure really what is the difference of this two calls but
                 // let's keep it that way
@@ -91,8 +96,6 @@ public class JCSTestSuite implements Test {
                             new Object[] { name });
                 }
 
-                TestToHostMapping.get().testDeployed(description, test);
-
             } else {
                 // Normal test
                 if (constructor.getParameterTypes().length == 0) {
@@ -103,6 +106,12 @@ public class JCSTestSuite implements Test {
                 } else {
                     test = constructor.newInstance(new Object[] { name });
                 }
+                // Simulate the deployment on LOCALHOST via Sample Policy.
+                IHost host = LocalHost.get();
+                ClientCloudObject co = LocalHost.get()
+                        .createClientCloudObject(Test.class, test);
+                TestToHostMapping.get().deployTestObjectToHost(host, co);
+
             }
 
         } catch (InstantiationException e) {
@@ -120,6 +129,8 @@ public class JCSTestSuite implements Test {
                     (warning("Cannot access test case: " + name + " ("
                             + exceptionToString(e) + ")")),
                     null);
+        } finally {
+            TestToHostMapping.get().testDeployed(description, test);
         }
         return new AbstractMap.SimpleEntry<Test, Description>((Test) test,
                 description);
@@ -173,6 +184,12 @@ public class JCSTestSuite implements Test {
      * Constructs an empty TestSuite.
      */
     public JCSTestSuite() {
+        // Default name
+        executorService = Executors
+                .newCachedThreadPool(new NamedThreadFactory("JCSTestSuite"));
+
+        completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
+                executorService);
     }
 
     /**
@@ -181,6 +198,13 @@ public class JCSTestSuite implements Test {
      * were written at 2337 meters in the Hueffihuette, Kanton Uri
      */
     public JCSTestSuite(final Class<?> theClass) {
+        //
+        executorService = Executors.newCachedThreadPool(
+                new NamedThreadFactory(theClass.getName()));
+
+        completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
+                executorService);
+        //
         addTestsFromTestCase(theClass);
     }
 
@@ -221,6 +245,12 @@ public class JCSTestSuite implements Test {
     public JCSTestSuite(Class<? extends TestCase> theClass, String name) {
         this(theClass);
         setName(name);
+        // Override
+        executorService = Executors.newCachedThreadPool(
+                new NamedThreadFactory(theClass.getName() + "." + name));
+
+        completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
+                executorService);
     }
 
     /**
@@ -228,6 +258,11 @@ public class JCSTestSuite implements Test {
      */
     public JCSTestSuite(String name) {
         setName(name);
+        executorService = Executors
+                .newCachedThreadPool(new NamedThreadFactory(name));
+
+        completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
+                executorService);
     }
 
     /**
@@ -240,6 +275,11 @@ public class JCSTestSuite implements Test {
         for (Class<?> each : classes) {
             addTest(testCaseForClass(each));
         }
+        executorService = Executors
+                .newCachedThreadPool(new NamedThreadFactory("Wrapping"));
+
+        completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
+                executorService);
     }
 
     private Test testCaseForClass(Class<?> each) {
@@ -398,11 +438,9 @@ public class JCSTestSuite implements Test {
         return super.toString();
     }
 
-    private ExecutorService executorService = Executors.newCachedThreadPool();// new
-    // NamedThreadFactory("JCSTestSuite"));
+    private ExecutorService executorService;
 
-    private CompletionService<Map.Entry<Test, Description>> completionService = new ExecutorCompletionService<Map.Entry<Test, Description>>(
-            executorService);
+    private CompletionService<Map.Entry<Test, Description>> completionService;
 
     private Queue<Future<Map.Entry<Test, Description>>> tasks = new LinkedList<Future<Map.Entry<Test, Description>>>();
 
@@ -427,6 +465,7 @@ public class JCSTestSuite implements Test {
             }
             return;
         }
+
         // Enqueue the creation of test objects since this is blocking
         tasks.offer(//
                 completionService
@@ -450,5 +489,26 @@ public class JCSTestSuite implements Test {
         return m.getParameterTypes().length == 0
                 && m.getName().startsWith("test")
                 && m.getReturnType().equals(Void.TYPE);
+    }
+
+    // Note this is shared among all the JCSParallelRunner instances
+    static final class NamedThreadFactory implements ThreadFactory {
+        static final AtomicInteger poolNumber = new AtomicInteger(1);
+
+        final AtomicInteger threadNumber = new AtomicInteger(1);
+
+        final ThreadGroup group;
+
+        NamedThreadFactory(String poolName) {
+            group = new ThreadGroup(
+                    poolName + "-JCSTestSuite-" + poolNumber.getAndIncrement());
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(group, r, group.getName() + "-thread-"
+                    + threadNumber.getAndIncrement(), 0);
+            return t;
+        }
     }
 }

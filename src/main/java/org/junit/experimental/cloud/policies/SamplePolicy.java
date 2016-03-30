@@ -107,7 +107,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     continue;
                 }
                 // here both are true
-                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() Can deploy test " + test);
+//                System.out.println(Thread.currentThread()
+//                        + " SamplePolicy.canDeployTest() Can deploy test "
+//                        + test);
                 return true;
             }
 
@@ -121,33 +123,43 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     || (maxHosts >= 1 && pool.getHostsCount() < maxHosts)) {
                 IHost host = pool.startNewHost();
                 mapping.registerHost(host);
-                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() new host ! Can deploy test " + test);
+//                System.out.println(Thread.currentThread()
+//                        + " SamplePolicy.canDeployTest() new host ! Can deploy test "
+//                        + test);
                 return true;
             } else {
-                System.out.println(Thread.currentThread() + " SamplePolicy.canDeployTest() Cannot deploy test "
-                                + test);
+//                System.out.println(Thread.currentThread()
+//                        + " SamplePolicy.canDeployTest() Cannot deploy test "
+//                        + test);
                 return false;
             }
         }
     }
 
+    /**
+     * This cannot be synchronized because it must be blocking !
+     */
     @Override
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-        System.out.println( Thread.currentThread() + " SamplePolicy.selectHost() selecting host for" + cloudObject);
+//        System.out.println(Thread.currentThread()
+//                + " SamplePolicy.selectHost() selecting host for"
+//                + cloudObject);
 
         /*
          * Block the thread until the conditions for its execution are
          * satisfied, but only if it carries a Test
          */
         if (mapping.isTestClass(cloudObject.getCloudObjectClass())) {
+
             synchronized (mapping.getTestsLock()) {
                 while (!canDeployTest(cloudObject, pool)) {
                     try {
-                        System.out.println("SamplePolicy.selectHost()"
-                                + Thread.currentThread()
-                                + " Waiting on TestLock for available slots.");
+//                        System.out.println("SamplePolicy.selectHost()"
+//                                + Thread.currentThread()
+//                                + " Waiting on TestLock for available slots.");
+                        
                         mapping.getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
