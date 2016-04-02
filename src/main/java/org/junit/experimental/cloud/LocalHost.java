@@ -31,8 +31,10 @@ public class LocalHost implements IHost {
     public ClientCloudObject createClientCloudObject(Class<?> objectClass,
             Object proxyObject) {
         UUID objectId = UUID.randomUUID();
-        ClientCloudObject co = new ClientCloudObject(objectId, objectClass,
-                proxyObject, null);
+        // Not sure what this is
+        long clientTemporalId = System.currentTimeMillis();
+        ClientCloudObject co = new ClientCloudObject(objectId, clientTemporalId,
+                objectClass, proxyObject, null);
 
         // System.out.println("LocalHost.createClientCloudObject() new CO: " +
         // co);

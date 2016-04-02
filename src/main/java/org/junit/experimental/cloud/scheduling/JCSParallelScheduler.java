@@ -102,8 +102,9 @@ public class JCSParallelScheduler implements RunnerScheduler {
         testsSemaphore = new Semaphore(
                 testLimit > 0 ? testLimit : Integer.MAX_VALUE);
 
-        System.out.println(factoryName + " configuration :\n" + "\tMax concurrency: "
-                + testLimit + "\n" + "\tMax threads: " + threadLimit);
+        // System.out.println(factoryName + " configuration :\n" + "\tMax
+        // concurrency: "
+        // + testLimit + "\n" + "\tMax threads: " + threadLimit);
 
     }
 
@@ -121,25 +122,28 @@ public class JCSParallelScheduler implements RunnerScheduler {
          * concurrency management. Here I guess is the place were to enforce any
          * specific ordering (or reordering of elements)
          */
-        System.out.println(Thread.currentThread() + " enqueue " + childStatement
-                + " for execution");
+        // System.out.println(Thread.currentThread() + " enqueue " +
+        // childStatement
+        // + " for execution");
         tasks.offer(completionService.submit(new Runnable() {
             @Override
             public void run() {
                 try {
 
-                    System.out.println(Thread.currentThread() + " "
-                            + childStatement + " start execution " + " using "
-                            + testsSemaphore);
+                    // System.out.println(Thread.currentThread() + " "
+                    // + childStatement + " start execution " + " using "
+                    // + testsSemaphore);
                     testsSemaphore.acquire();
                     // Create Test Object and then Execute ?
                     childStatement.run();
                 } catch (InterruptedException e) {
-                    System.err.println(Thread.currentThread() + " INTERRUPTED");
+                    e.printStackTrace();
+                    // System.err.println(Thread.currentThread() + "
+                    // INTERRUPTED");
                 } finally {
-                    System.out.println(Thread.currentThread()
-                            + " release permit from semaphore " + testsSemaphore
-                            + "{" + testsSemaphore.availablePermits() + "}");
+                    // System.out.println(Thread.currentThread()
+                    // + " release permit from semaphore " + testsSemaphore
+                    // + "{" + testsSemaphore.availablePermits() + "}");
                     testsSemaphore.release();
                 }
             }
@@ -148,8 +152,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
 
     @Override
     public void finished() {
-        System.out.println(Thread.currentThread()
-                + "Finished submission of all tests for " + factoryName);
+        // System.out.println(Thread.currentThread()
+        // + "Finished submission of all tests for " + factoryName);
         //
         try {
             while (!tasks.isEmpty()) {
@@ -157,8 +161,8 @@ public class JCSParallelScheduler implements RunnerScheduler {
                     Future<Void> finishedTask = completionService.take();
                     tasks.remove(finishedTask);
 
-                    System.out.println(
-                            "JCSParallelScheduler.finished() Done a task");
+                    // System.out.println(
+                    // "JCSParallelScheduler.finished() Done a task");
 
                     finishedTask.get();
                 } catch (ExecutionException e) {
@@ -179,10 +183,11 @@ public class JCSParallelScheduler implements RunnerScheduler {
         } finally {
             while (!tasks.isEmpty())
                 tasks.poll().cancel(true);
+            //
             executorService.shutdownNow();
         }
-        System.out.println(Thread.currentThread() + "Finished all tests for "
-                + factoryName);
+        // System.out.println(Thread.currentThread() + "Finished all tests for "
+        // + factoryName);
         synchronized (TestToHostMapping.get().getTestsLock()) {
             TestToHostMapping.get().getTestsLock().notifyAll();
         }

@@ -35,8 +35,8 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
 
         if (!method.getDeclaringClass()
                 .isAnnotationPresent(CloudObject.class)) {
-            System.out.println(Thread.currentThread()
-                    + " JCSRunner.runChild() NOT A CLOUD OBJECT !");
+            // System.out.println(Thread.currentThread()
+            // + " JCSRunner.runChild() NOT A CLOUD OBJECT !");
             super.runChild(method, notifier);
 
         } else {
@@ -44,8 +44,8 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
             Description description = describeChild(method);
             if (isIgnored(method)) {
                 notifier.fireTestIgnored(description);
-                System.out.println(Thread.currentThread()
-                        + " JCSRunner.runChild() IGNORED ");
+                // System.out.println(Thread.currentThread()
+                // + " JCSRunner.runChild() IGNORED ");
             } else {
                 try {
                     // Update test status
@@ -61,10 +61,10 @@ public class JCSRunner extends BlockJUnit4ClassRunner {
                             statementMap.getValue());
 
                     // ---
-                    System.out.println("\n\n\n----------------------------- "
-                            + Thread.currentThread()
-                            + " JCSRunner.runChild() start " + description
-                            + "-----------------------------\n\n\n");
+                    // System.out.println("\n\n\n----------------------------- "
+                    // + Thread.currentThread()
+                    // + " JCSRunner.runChild() start " + description
+                    // + "-----------------------------\n\n\n");
 
                     // This is where the just created CO is used as test
                     TestToHostMapping.get().testStarts(description);

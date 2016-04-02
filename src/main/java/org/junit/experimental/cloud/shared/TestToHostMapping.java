@@ -15,6 +15,9 @@ import at.ac.tuwien.infosys.jcloudscale.vm.IHost;
 import org.junit.experimental.cloud.LocalHost;
 import org.junit.runner.Description;
 
+// FIXME Use a logger here ... please !
+// TODO Collect Statistics
+// TODO Integrate with Events and Monitoring system of JCS
 //@Logged
 public class TestToHostMapping {
 
@@ -27,8 +30,6 @@ public class TestToHostMapping {
     private static final String STARTED = "STARTED";
 
     private static final String FINISHED = "FINISHED";
-
-    private static final String FAILED = "FAILED";
 
     private static TestToHostMapping INSTANCE;
 
@@ -102,9 +103,9 @@ public class TestToHostMapping {
                 // This cannot be null
                 host = testToHostMapping.get(cloudObject);
 
-                System.out.println(
-                        "TestToHostMapping.updateTests() Tests deployed on "
-                                + host + " " + deployedTests);
+                // System.out.println(
+                // "TestToHostMapping.updateTests() Tests deployed on "
+                // + host + " " + deployedTests);
 
                 descriptionToCloudObjectMapping.put(description, cloudObject);
 
@@ -128,12 +129,12 @@ public class TestToHostMapping {
                     runningTests = runningTestOnHostMapping.get(host)
                             .incrementAndGet();
                     //
-                    System.out.println(
-                            "TestToHostMapping.updateTests() Tests deployed on "
-                                    + host + " " + deployedTests);
-                    System.out.println(
-                            "TestToHostMapping.updateTests() Tests running on "
-                                    + host + " " + runningTests);
+                    // System.out.println(
+                    // "TestToHostMapping.updateTests() Tests deployed on "
+                    // + host + " " + deployedTests);
+                    // System.out.println(
+                    // "TestToHostMapping.updateTests() Tests running on "
+                    // + host + " " + runningTests);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;
@@ -155,16 +156,17 @@ public class TestToHostMapping {
                     runningTests = runningTestOnHostMapping.get(host)
                             .decrementAndGet();
                     //
-                    System.out.println(
-                            "TestToHostMapping.updateTests() Tests running on "
-                                    + host + " " + runningTests);
+                    // System.out.println(
+                    // "TestToHostMapping.updateTests() Tests running on "
+                    // + host + " " + runningTests);
                     // // At this point we can also do the clean up at app level
                     descriptionToCloudObjectMapping.keySet()
                             .remove(cloudObject);
                     testToHostMapping.keySet().remove(cloudObject);
                     hostToTestMapping.get(host).remove(cloudObject);
                     //
-                    System.out.println("Wake up waiting threads on TestsLock");
+                    // System.out.println("Wake up waiting threads on
+                    // TestsLock");
                     //
                     getTestsLock().notifyAll();
                 } catch (Throwable e) {
@@ -175,12 +177,12 @@ public class TestToHostMapping {
             }
 
             // Summary
-            System.out.println("TestToHostMapping.updateTests() SUMMARY:\n"//
-                    + "\t description " + description + "\n" //
-                    + "\t description.full " + description.getClassName() + "."
-                    + description.getMethodName() + "\n"//
-                    + "\t proxyObject " + proxyObject + "\n"//
-                    + "\t state " + previousState + "--> " + status);
+            // System.out.println("TestToHostMapping.updateTests() SUMMARY:\n"//
+            // + "\t description " + description + "\n" //
+            // + "\t description.full " + description.getClassName() + "."
+            // + description.getMethodName() + "\n"//
+            // + "\t proxyObject " + proxyObject + "\n"//
+            // + "\t state " + previousState + "--> " + status);
 
         }
     }
@@ -334,12 +336,12 @@ public class TestToHostMapping {
         // This cannot be null
         int tot = deployedTestOnHostMapping.get(selectedHost).incrementAndGet();
 
-        System.out.println(Thread.currentThread() + " Deploy Test "
-                + cloudObject + " to " + selectedHost + "=="
-                + hostToTestMapping.get(selectedHost));
-        System.out.println(
-                Thread.currentThread() + " Total tests deployed on host "
-                        + selectedHost + " is " + tot);
+        // System.out.println(Thread.currentThread() + " Deploy Test "
+        // + cloudObject + " to " + selectedHost + "=="
+        // + hostToTestMapping.get(selectedHost));
+        // System.out.println(
+        // Thread.currentThread() + " Total tests deployed on host "
+        // + selectedHost + " is " + tot);
 
     }
 
@@ -369,7 +371,7 @@ public class TestToHostMapping {
      * @param clazz
      */
     public void registerTestClass(Class<?> clazz) {
-        System.out.println("TestToHostMapping.registerTestClass() " + clazz);
+        // System.out.println("TestToHostMapping.registerTestClass() " + clazz);
         synchronized (testClasses) {
             testClasses.add(clazz);
         }
