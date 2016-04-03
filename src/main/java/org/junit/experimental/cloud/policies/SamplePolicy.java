@@ -76,45 +76,63 @@ public class SamplePolicy extends AbstractScalingPolicy {
      * @param pool
      * @return
      */
-    private boolean canDeployTest(ClientCloudObject test, IHostPool pool) {
+    private IHost canDeployTest(ClientCloudObject test, IHostPool pool) {
+
         synchronized (hostsLock) {
 
             for (IHost host : pool.getHosts()) {
                 // Count how many test methods from the same class are running
                 // or scheduled (just to about to start)
-                int sum = mapping.countRunningTestsOfTypeForHost(
-                        test.getCloudObjectClass(), host)
-                        + mapping.countScheduledTestsOfTypeForHost(
-                                test.getCloudObjectClass(), host);
+
+                int running = mapping.countRunningTestsOfTypeForHost(
+                        test.getCloudObjectClass(), host);
+                int scheduled = mapping.countScheduledTestsOfTypeForHost(
+                        test.getCloudObjectClass(), host);
+
+                int sum = running + scheduled;
+
+                // System.out.println("------------------------------\n"
+                // + "SamplePolicy.canDeployTest(): " + "Inside CH " + host
+                // + " there are " + sum + "(" + running + "," + scheduled
+                // + ") tests from the same class, and max is"
+                // + maxConcurrentTestsFromSameTestClassPerHost + "\n"
+                // + "------------------------------");
 
                 boolean maxConcurrentTestMethodsPerHostOk = maxConcurrentTestsFromSameTestClassPerHost < 1
                         || (maxConcurrentTestsFromSameTestClassPerHost >= 1
                                 && sum < maxConcurrentTestsFromSameTestClassPerHost);
 
-                if (!maxConcurrentTestMethodsPerHostOk)
+                if (!maxConcurrentTestMethodsPerHostOk) {
                     continue;
+                }
 
                 // Count how many test methods are running or scheduled (just to
                 // about to start)
-                int totalSum = mapping.countRunningTestsForHost(host)
-                        + mapping.countScheduledTestsForHost(host);
+                int totalRunning = mapping.countRunningTestsForHost(host);
+                int totalScheduled = mapping.countScheduledTestsForHost(host);
+
+                int totalSum = totalRunning + totalScheduled;
 
                 boolean maxConcurrentTestsPerHostOk = maxConcurrentTestsPerHost < 1
                         || (maxConcurrentTestsPerHost >= 1
                                 && totalSum < maxConcurrentTestsPerHost);
 
+                // System.out.println("------------------------------\n"
+                // + "SamplePolicy.canDeployTest(): " + "Inside CH " + host
+                // + " there are TOTAL " + totalSum + "(" + totalRunning
+                // + "," + totalScheduled
+                // + ") tests from the same class, and totalMax is"
+                // + maxConcurrentTestsPerHost + "\n"
+                // + "------------------------------");
+
                 if (!maxConcurrentTestsPerHostOk) {
                     continue;
                 }
-                // here both are true
-//                System.out.println(Thread.currentThread()
-//                        + " SamplePolicy.canDeployTest() Can deploy test "
-//                        + test);
-                return true;
-            }
 
-            // System.out.println(
-            // "SamplePolicy.canDeployTest() 3 " + Thread.currentThread());
+                // NOTE THIS ONE ! - This one sets the counters !
+                mapping.deployTestObjectToHost(host, test);
+                return host;
+            }
 
             // Here we need to start an host on our own and then return true for
             // this thread !
@@ -123,15 +141,16 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     || (maxHosts >= 1 && pool.getHostsCount() < maxHosts)) {
                 IHost host = pool.startNewHost();
                 mapping.registerHost(host);
-//                System.out.println(Thread.currentThread()
-//                        + " SamplePolicy.canDeployTest() new host ! Can deploy test "
-//                        + test);
-                return true;
+                // System.out.println(Thread.currentThread()
+                // + " SamplePolicy.canDeployTest() Start a new host "
+                // + host);
+                mapping.deployTestObjectToHost(host, test);
+                return host;
             } else {
-//                System.out.println(Thread.currentThread()
-//                        + " SamplePolicy.canDeployTest() Cannot deploy test "
-//                        + test);
-                return false;
+                // System.out.println(Thread.currentThread()
+                // + " SamplePolicy.canDeployTest() Cannot deploy test "
+                // + test);
+                return null;
             }
         }
     }
@@ -143,9 +162,9 @@ public class SamplePolicy extends AbstractScalingPolicy {
     public /* synchronized */ IHost selectHost(ClientCloudObject cloudObject,
             IHostPool pool) {
 
-//        System.out.println(Thread.currentThread()
-//                + " SamplePolicy.selectHost() selecting host for"
-//                + cloudObject);
+        // System.out.println(Thread.currentThread()
+        // + " SamplePolicy.selectHost() selecting host for"
+        // + cloudObject);
 
         /*
          * Block the thread until the conditions for its execution are
@@ -154,12 +173,12 @@ public class SamplePolicy extends AbstractScalingPolicy {
         if (mapping.isTestClass(cloudObject.getCloudObjectClass())) {
 
             synchronized (mapping.getTestsLock()) {
-                while (!canDeployTest(cloudObject, pool)) {
+                IHost host = null;
+                while ((host = canDeployTest(cloudObject, pool)) == null) {
                     try {
-//                        System.out.println("SamplePolicy.selectHost()"
-//                                + Thread.currentThread()
-//                                + " Waiting on TestLock for available slots.");
-                        
+                        // System.out.println(Thread.currentThread()
+                        // + " Waiting on TestLock for available slots.");
+
                         mapping.getTestsLock().wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -167,87 +186,15 @@ public class SamplePolicy extends AbstractScalingPolicy {
                     }
                 }
 
-                /*
-                 * If a thread arrives here then it is safe to assume that there
-                 * is and actual place for it. This is true for every thread
-                 * that arrive here and might include the possibility to we can
-                 * start new machines. We still need to synch because other
-                 * threads not related to testing classes might be active and
-                 * cause host changes
-                 */
-
-                // Try to find an available host that can host this test
-                // Note that the number of hosts might vary !!
-                synchronized (hostsLock) {
-                    for (IHost host : pool.getHosts()) {
-
-                        int sum = mapping.countRunningTestsOfTypeForHost(
-                                cloudObject.getCloudObjectClass(), host)
-                                + mapping.countScheduledTestsOfTypeForHost(
-                                        cloudObject.getCloudObjectClass(),
-                                        host);
-                        int totalSum = mapping.countRunningTestsForHost(host)
-                                + mapping.countScheduledTestsForHost(host);
-
-                        boolean maxConcurrentTestMethodsPerHostOk = maxConcurrentTestsFromSameTestClassPerHost < 1
-                                || (maxConcurrentTestsFromSameTestClassPerHost >= 1
-                                        && sum < maxConcurrentTestsFromSameTestClassPerHost);
-
-                        // if (!maxConcurrentTestMethodsPerHostOk)
-                        // System.out.println("SamplePolicy.selectHost()"
-                        // + Thread.currentThread()
-                        // + " too many tests on the host ");
-                        boolean maxConcurrentTestsPerHostOk = maxConcurrentTestsPerHost < 1
-                                || (maxConcurrentTestsPerHost >= 1
-                                        && totalSum < maxConcurrentTestsPerHost);
-                        // if (!maxConcurrentTestsPerHostOk)
-                        // System.out.println("SamplePolicy.selectHost()"
-                        // + Thread.currentThread()
-                        // + " too many tests methods for the same test on the
-                        // host ");
-                        if (maxConcurrentTestMethodsPerHostOk
-                                && maxConcurrentTestsPerHostOk) {
-
-                            // System.out.println(
-                            // "SamplePolicy.selectHost() Deploy");
-                            mapping.deployTestObjectToHost(host, cloudObject);
-                            // System.out.println(
-                            // "SamplePolicy.selectHost() Deploy DONE ");
-                            mapping.getTestsLock().notifyAll();
-                            return host;
-                        }
-                    }
-                }
-
-                // Not sure if here we shall be do this or not
-                // System.out.println(
-                // "SamplePolicy.selectHost() STARTING A NEW HOST");
-                // No hosts cannot be found, we should be able to start a
-                // new one.
-                // TODO Will this be ok ?! I am not sure !
-                synchronized (hostsLock) {
-                    IHost host = pool.startNewHost();
-                    mapping.registerHost(host);
-
-                    // System.out.println("SamplePolicy.selectHost() "
-                    // + Thread.currentThread().getName() + " deploy CO "
-                    // + cloudObject + " of class "
-                    // + cloudObject.getCloudObjectClass() + " on "
-                    // + host.getIpAddress());
-
-                    // Bookkeeping
-                    // System.out.println("SamplePolicy.selectHost() Deploy");
-                    mapping.deployTestObjectToHost(host, cloudObject);
-                    // System.out
-                    // .println("SamplePolicy.selectHost() Deploy DONE ");
-
-                    mapping.getTestsLock().notifyAll();
-                    return host;
-                }
+                // System.out.println("SamplePolicy.selectHost() "
+                // + Thread.currentThread().getName() + " deploy CO "
+                // + cloudObject + " of class "
+                // + cloudObject.getCloudObjectClass() + " on " + host);
+                //
+                mapping.getTestsLock().notifyAll();
+                return host;
             }
         } else {
-            // System.out.println("\n\t WARN SamplePolicy.selectHost() : "
-            // + cloudObject + " not a registered Test Object !");
             synchronized (hostsLock) {
                 return pickRandomOrStart(pool);
             }
